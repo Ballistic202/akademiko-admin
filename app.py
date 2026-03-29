@@ -68,7 +68,7 @@ def upload_ocr():
     else:
         content_type = "application/pdf"
 
-    url = f"{endpoint}documentintelligence/documentModels/prebuilt-layout:analyze?api-version=2024-11-30"
+    url = f"{endpoint}documentintelligence/documentModels/prebuilt-layout:analyze?api-version=2024-11-30&locale=bg"
     headers = {"Ocp-Apim-Subscription-Key": key, "Content-Type": content_type}
     response = req.post(url, headers=headers, data=file_bytes)
 
