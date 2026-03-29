@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Академико Admin</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f5f5f5;color:#1a1a1a}
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+.sidebar{background:#fff;border-right:1px solid #e5e5e5;padding:0}
+.logo{padding:1.25rem 1rem;font-size:15px;font-weight:600;border-bottom:1px solid #e5e5e5}
+.nav-item{padding:10px 1rem;font-size:14px;color:#666;cursor:pointer;display:flex;align-items:center;gap:8px;border-left:3px solid transparent}
+.nav-item.active{color:#1a1a1a;font-weight:500;border-left-color:#2563eb;background:#f0f7ff}
+.nav-item:hover:not(.active){background:#f9f9f9}
+.content{padding:2rem;overflow-y:auto}
+.page{display:none}
+.page.active{display:block}
+.page-title{font-size:18px;font-weight:600;margin-bottom:1.5rem}
+.card{background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:1.25rem;margin-bottom:1rem}
+label{font-size:12px;color:#666;display:block;margin-bottom:4px}
+select,input[type=text]{width:100%;padding:8px 10px;font-size:14px;border:1px solid #d5d5d5;border-radius:6px;background:#fff;color:#1a1a1a;outline:none}
+select:focus,input:focus{border-color:#2563eb}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.upload-zone{border:2px dashed #d5d5d5;border-radius:10px;padding:2.5rem;text-align:center;cursor:pointer;margin-bottom:1rem;transition:background .2s}
+.upload-zone:hover{background:#f0f7ff;border-color:#2563eb}
+.upload-title{font-size:14px;color:#444;margin-bottom:4px}
+.upload-sub{font-size:12px;color:#999}
+.btn{padding:9px 18px;font-size:14px;border-radius:6px;cursor:pointer;border:1px solid #d5d5d5;background:#fff;color:#1a1a1a;font-weight:500}
+.btn:hover{background:#f5f5f5}
+.btn-primary{background:#2563eb;border-color:#1d4ed8;color:#fff}
+.btn-primary:hover{background:#1d4ed8}
+.btn-success{background:#16a34a;border-color:#15803d;color:#fff}
+.btn-success:hover{background:#15803d}
+.btn-danger{background:#fff;border-color:#ef4444;color:#ef4444}
+.btn-danger:hover{background:#fef2f2}
+.btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem}
+.chunk-card{border:1px solid #e5e5e5;border-radius:8px;padding:1rem;margin-bottom:10px;background:#fff}
+.chunk-meta{display:flex;justify-content:space-between;margin-bottom:8px;align-items:flex-start}
+.chunk-id{font-size:11px;font-family:monospace;color:#888}
+.badges{display:flex;gap:6px;flex-wrap:wrap}
+.badge{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500}
+.badge-blue{background:#dbeafe;color:#1e40af}
+.badge-green{background:#dcfce7;color:#166534}
+.badge-amber{background:#fef9c3;color:#854d0e}
+.chunk-text{font-size:13px;color:#333;line-height:1.6;margin-bottom:10px;padding:8px;background:#f9f9f9;border-radius:6px}
+.chunk-actions{display:flex;gap:8px}
+.qa-box{border:1px solid #e5e5e5;border-radius:8px;min-height:250px;padding:1rem;margin-bottom:12px;background:#f9f9f9;overflow-y:auto;max-height:400px}
+.msg{margin-bottom:12px}
+.msg-label{font-size:11px;color:#999;margin-bottom:3px}
+.bubble{display:inline-block;padding:8px 12px;border-radius:8px;font-size:14px;max-width:85%;line-height:1.5}
+.bubble-user{background:#2563eb;color:#fff}
+.bubble-ai{background:#fff;border:1px solid #e5e5e5;color:#1a1a1a}
+.qa-row{display:flex;gap:8px}
+.qa-row input{flex:1}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.5rem}
+.stat{background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:1rem}
+.stat-num{font-size:26px;font-weight:600}
+.stat-lbl{font-size:12px;color:#666;margin-top:2px}
+.pending-badge{background:#fef9c3;color:#854d0e;font-size:12px;padding:3px 10px;border-radius:20px;font-weight:500}
+.progress-bar{height:4px;background:#e5e5e5;border-radius:2px;margin-top:6px}
+.progress-fill{height:4px;background:#2563eb;border-radius:2px}
+.file-list{margin-top:10px}
+.file-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#f9f9f9;border-radius:6px;margin-bottom:6px;font-size:13px}
+.file-status{font-size:12px;color:#16a34a;font-weight:500}
+.file-pending{color:#d97706}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid #e5e5e5;border-top-color:#2563eb;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.alert{padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:12px}
+.alert-success{background:#dcfce7;color:#166534;border:1px solid #bbf7d0}
+.alert-error{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
+.sep{height:1px;background:#e5e5e5;margin:.75rem 0}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <div class="logo">Академико Admin</div>
+    <div class="nav-item active" onclick="show('upload')">Качване</div>
+    <div class="nav-item" onclick="show('review')">Преглед на части <span id="pending-count" style="display:none" class="pending-badge">0</span></div>
+    <div class="nav-item" onclick="show('qa')">Тестване на Q&A</div>
+    <div class="nav-item" onclick="show('stats')">Статистика</div>
+  </div>
+
+  <div class="content">
+
+    <div class="page active" id="page-upload">
+      <div class="page-title">Качване на учебни материали</div>
+      <div class="card">
+        <div class="field-row">
+          <div><label>Предмет</label>
+            <select id="subject">
+              <option>Човекът и природата</option>
+              <option>Математика</option>
+              <option>Български език и литература</option>
+              <option>История и цивилизации</option>
+              <option>Географии и икономика</option>
+              <option>Биология</option>
+              <option>Физика</option>
+              <option>Химия</option>
+            </select>
+          </div>
+          <div><label>Клас</label>
+            <select id="grade">
+              <option value="1">1. клас</option>
+              <option value="2">2. клас</option>
+              <option value="3">3. клас</option>
+              <option value="4" selected>4. клас</option>
+              <option value="5">5. клас</option>
+              <option value="6">6. клас</option>
+              <option value="7">7. клас</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div><label>Издателство / учебник</label>
+            <input type="text" id="publisher" placeholder="напр. Просвета 2024">
+          </div>
+          <div><label>Глава / тема (по избор)</label>
+            <input type="text" id="chapter" placeholder="напр. Жизнени процеси">
+          </div>
+        </div>
+        <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+          <div class="upload-title">Плъзнете PNG файлове тук или кликнете за избор</div>
+          <div class="upload-sub">Поддържат се PNG и JPG · Страниците ще бъдат обработени с OCR автоматично</div>
+          <input type="file" id="file-input" multiple accept=".png,.jpg,.jpeg" style="display:none" onchange="filesSelected(this.files)">
+        </div>
+        <div class="file-list" id="file-list"></div>
+        <div id="upload-alert"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="startOCR()">Стартирай OCR и разбий на части</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-review">
+      <div class="page-title">Преглед и одобрение на части</div>
+      <div id="review-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <span id="review-subtitle" style="font-size:13px;color:#666"></span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-success" onclick="approveAll()">Одобри всички</button>
+          <button class="btn btn-danger" onclick="rejectAll()">Откажи всички</button>
+        </div>
+      </div>
+      <div id="review-alert"></div>
+      <div id="chunks-container"></div>
+    </div>
+
+    <div class="page" id="page-qa">
+      <div class="page-title">Тестване на Q&A</div>
+      <div class="card">
+        <div class="field-row">
+          <div><label>Предмет</label>
+            <select id="qa-subject">
+              <option value="">Всички предмети</option>
+              <option>Човекът и природата</option>
+              <option>Математика</option>
+              <option>Български език и литература</option>
+            </select>
+          </div>
+          <div><label>Клас</label>
+            <select id="qa-grade">
+              <option value="">Всички класове</option>
+              <option value="4">4. клас</option>
+              <option value="5">5. клас</option>
+            </select>
+          </div>
+        </div>
+        <div class="qa-box" id="qa-messages">
+          <div style="text-align:center;color:#999;font-size:13px;padding:2rem">Задайте въпрос за да тествате системата</div>
+        </div>
+        <div class="qa-row">
+          <input type="text" id="qa-input" placeholder="Задайте въпрос..." onkeydown="if(event.key==='Enter')sendQuestion()">
+          <button class="btn btn-primary" onclick="sendQuestion()">Изпрати</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-stats">
+      <div class="page-title">Статистика</div>
+      <div class="stats">
+        <div class="stat"><div class="stat-num" id="s-approved">—</div><div class="stat-lbl">Одобрени части</div></div>
+        <div class="stat"><div class="stat-num" id="s-pending">—</div><div class="stat-lbl">Чакащи преглед</div></div>
+        <div class="stat"><div class="stat-num" id="s-total">—</div><div class="stat-lbl">Общо части</div></div>
+      </div>
+      <div class="card">
+        <div style="font-size:14px;font-weight:600;margin-bottom:1rem">Последно качени</div>
+        <div id="stats-list" style="font-size:13px;color:#666">Зарежда се...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const ADMIN_URL = '';
+
+function show(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const pages = ['upload','review','qa','stats'];
+  document.querySelectorAll('.nav-item')[pages.indexOf(page)].classList.add('active');
+  if(page === 'review') loadPending();
+  if(page === 'stats') loadStats();
+}
+
+let selectedFiles = [];
+function filesSelected(files) {
+  selectedFiles = Array.from(files);
+  const list = document.getElementById('file-list');
+  list.innerHTML = selectedFiles.map(f =>
+    `<div class="file-item"><span>${f.name}</span><span class="file-pending">Готов за качване</span></div>`
+  ).join('');
+}
+
+async function startOCR() {
+  if(!selectedFiles.length) {
+    alert('Моля изберете файлове за качване.');
+    return;
+  }
+  const subject = document.getElementById('subject').value;
+  const grade = document.getElementById('grade').value;
+  const publisher = document.getElementById('publisher').value;
+  const chapter = document.getElementById('chapter').value;
+
+  const list = document.getElementById('file-list');
+  const alert_el = document.getElementById('upload-alert');
+  let success = 0;
+
+  for(let i = 0; i < selectedFiles.length; i++) {
+    const f = selectedFiles[i];
+    const items = list.querySelectorAll('.file-item');
+    items[i].querySelector('.file-pending').innerHTML = '<span class="spinner"></span>';
+
+    const formData = new FormData();
+    formData.append('file', f);
+    formData.append('subject', subject);
+    formData.append('grade', grade);
+    formData.append('publisher', publisher);
+    formData.append('chapter', chapter);
+
+    try {
+      const res = await fetch('/upload-ocr', {method:'POST', body: formData});
+      const data = await res.json();
+      if(data.status === 'ok') {
+        items[i].querySelector('.file-pending').innerHTML = `<span class="file-status">${data.chunks} части</span>`;
+        success++;
+      } else {
+        items[i].querySelector('.file-pending').textContent = 'Грешка';
+      }
+    } catch(e) {
+      items[i].querySelector('.file-pending').textContent = 'Грешка';
+    }
+  }
+
+  if(success > 0) {
+    alert_el.innerHTML = `<div class="alert alert-success">Успешно обработени ${success} файла. Отидете на "Преглед на части" за одобрение.</div>`;
+    document.getElementById('pending-count').style.display = 'inline';
+  }
+}
+
+async function loadPending() {
+  const res = await fetch('/pending');
+  const data = await res.json();
+  const files = data.pending || [];
+  document.getElementById('review-subtitle').textContent = `${files.length} файла чакат одобрение`;
+  document.getElementById('pending-count').textContent = files.length;
+  document.getElementById('pending-count').style.display = files.length > 0 ? 'inline' : 'none';
+
+  const container = document.getElementById('chunks-container');
+  if(!files.length) {
+    container.innerHTML = '<div style="text-align:center;color:#999;padding:2rem;font-size:14px">Няма части за преглед</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  for(const filename of files) {
+    try {
+      const res = await fetch(`/chunks/${filename}`);
+      const chunks = await res.json();
+      chunks.forEach((chunk, i) => {
+        const div = document.createElement('div');
+        div.className = 'chunk-card';
+        div.id = `chunk-${filename}-${i}`;
+        div.innerHTML = `
+          <div class="chunk-meta">
+            <div class="chunk-id">${chunk.chunk_id || filename} · стр. ${chunk.page || '?'}</div>
+            <div class="badges">
+              ${chunk.subject ? `<span class="badge badge-blue">${chunk.subject}</span>` : ''}
+              ${chunk.grade ? `<span class="badge badge-green">${chunk.grade}. клас</span>` : ''}
+              ${chunk.content_type ? `<span class="badge badge-amber">${chunk.content_type}</span>` : ''}
+            </div>
+          </div>
+          <div class="chunk-text">${chunk.text_content || chunk.content || ''}</div>
+          <div class="chunk-actions">
+            <button class="btn btn-success" style="font-size:12px;padding:5px 12px" onclick="approveFile('${filename}')">Одобри файла</button>
+            <button class="btn btn-danger" style="font-size:12px;padding:5px 12px" onclick="rejectFile('${filename}')">Откажи файла</button>
+          </div>`;
+        container.appendChild(div);
+      });
+    } catch(e) {
+      const div = document.createElement('div');
+      div.className = 'chunk-card';
+      div.innerHTML = `<div class="chunk-id">${filename}</div>
+        <div class="chunk-actions" style="margin-top:8px">
+          <button class="btn btn-success" style="font-size:12px;padding:5px 12px" onclick="approveFile('${filename}')">Одобри</button>
+          <button class="btn btn-danger" style="font-size:12px;padding:5px 12px" onclick="rejectFile('${filename}')">Откажи</button>
+        </div>`;
+      container.appendChild(div);
+    }
+  }
+}
+
+async function approveFile(filename) {
+  const res = await fetch(`/approve/${filename}`, {method:'POST'});
+  const data = await res.json();
+  if(data.status === 'approved') {
+    document.getElementById('review-alert').innerHTML = '<div class="alert alert-success">Одобрено успешно!</div>';
+    loadPending();
+  }
+}
+
+async function rejectFile(filename) {
+  const res = await fetch(`/reject/${filename}`, {method:'POST'});
+  if(res.ok) {
+    document.getElementById('review-alert').innerHTML = '<div class="alert alert-error">Файлът е отказан и изтрит.</div>';
+    loadPending();
+  }
+}
+
+async function approveAll() {
+  const res = await fetch('/pending');
+  const data = await res.json();
+  for(const f of data.pending || []) {
+    await fetch(`/approve/${f}`, {method:'POST'});
+  }
+  document.getElementById('review-alert').innerHTML = '<div class="alert alert-success">Всички части са одобрени!</div>';
+  loadPending();
+}
+
+async function rejectAll() {
+  if(!confirm('Сигурни ли сте? Всички чакащи части ще бъдат изтрити.')) return;
+  const res = await fetch('/pending');
+  const data = await res.json();
+  for(const f of data.pending || []) {
+    await fetch(`/reject/${f}`, {method:'POST'});
+  }
+  loadPending();
+}
+
+let qaMessages = [];
+async function sendQuestion() {
+  const input = document.getElementById('qa-input');
+  const q = input.value.trim();
+  if(!q) return;
+  input.value = '';
+
+  const box = document.getElementById('qa-messages');
+  box.innerHTML += `<div class="msg"><div class="msg-label">Вие</div><div class="bubble bubble-user">${q}</div></div>`;
+  box.innerHTML += `<div class="msg" id="ai-msg"><div class="msg-label">Академико</div><div class="bubble bubble-ai"><span class="spinner"></span></div></div>`;
+  box.scrollTop = box.scrollHeight;
+
+  const grade = document.getElementById('qa-grade').value;
+  const subject = document.getElementById('qa-subject').value;
+
+  const body = {question: q};
+  if(grade) body.grade = parseInt(grade);
+  if(subject) body.subject = subject;
+
+  try {
+    const res = await fetch('/qa', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    const data = await res.json();
+    document.getElementById('ai-msg').querySelector('.bubble-ai').textContent = data.answer || 'Няма отговор.';
+  } catch(e) {
+    document.getElementById('ai-msg').querySelector('.bubble-ai').textContent = 'Грешка при свързване.';
+  }
+  box.scrollTop = box.scrollHeight;
+}
+
+async function loadStats() {
+  try {
+    const res = await fetch('/stats');
+    const data = await res.json();
+    document.getElementById('s-approved').textContent = data.approved || 0;
+    document.getElementById('s-pending').textContent = data.pending || 0;
+    document.getElementById('s-total').textContent = (data.approved || 0) + (data.pending || 0);
+    const list = document.getElementById('stats-list');
+    if(data.recent && data.recent.length) {
+      list.innerHTML = data.recent.map(f =>
+        `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #e5e5e5"><span>${f}</span></div>`
+      ).join('');
+    } else {
+      list.textContent = 'Няма данни';
+    }
+  } catch(e) {
+    document.getElementById('stats-list').textContent = 'Грешка при зареждане';
+  }
+}
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.background = '#f0f7ff'; });
+dz.addEventListener('dragleave', () => { dz.style.background = ''; });
+dz.addEventListener('drop', e => { e.preventDefault(); dz.style.background = ''; filesSelected(e.dataTransfer.files); });
+</script>
+</body>
+</html>
