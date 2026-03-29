@@ -33,6 +33,12 @@ def reject(filename):
     blob = blob_client.get_blob_client("chunks-pending", filename)
     blob.delete_blob()
     return jsonify({"status": "rejected", "file": filename})
+    
+@app.route("/ocr/<filename>", methods=["POST"])
+def ocr_file(filename):
+    from ocr import ocr_and_chunk
+    count = ocr_and_chunk(filename)
+    return jsonify({"status": "ok", "chunks": count, "file": filename})
 
 if __name__ == "__main__":
     app.run()
