@@ -2,3 +2,4 @@ flask
 gunicorn
 azure-storage-blob
 azure-ai-documentintelligence
+requests
