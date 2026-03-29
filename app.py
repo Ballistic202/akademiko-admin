@@ -130,7 +130,7 @@ def qa():
     search_body = {
         "search": question,
         "vectorQueries": [{"kind": "vector", "vector": vector, "fields": "snippet_vector", "k": 5}],
-        "select": "snippet,blob_url",
+        "select": "text_content,blob_url",
         "top": 3
     }
     search_res = req.post(search_url,
@@ -138,7 +138,7 @@ def qa():
         json=search_body
     )
     results = search_res.json().get("value", [])
-    context = "\n\n".join([r.get("snippet", "") for r in results])
+    context = "\n\n".join([r.get("text_content", "") for r in results])
 
     chat_url = f"{openai_endpoint}openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
     chat_res = req.post(chat_url,
