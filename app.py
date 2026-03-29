@@ -44,7 +44,13 @@ def ocr_file(filename):
     key = os.environ["DOC_KEY"]
     
     url = f"{endpoint}documentintelligence/documentModels/prebuilt-layout:analyze?api-version=2024-11-30"
-    headers = {"Ocp-Apim-Subscription-Key": key, "Content-Type": "application/pdf"}
+    if filename.lower().endswith(".png"):
+    content_type = "image/png"
+elif filename.lower().endswith(".jpg") or filename.lower().endswith(".jpeg"):
+    content_type = "image/jpeg"
+else:
+    content_type = "application/pdf"
+headers = {"Ocp-Apim-Subscription-Key": key, "Content-Type": content_type}
     
     response = req.post(url, headers=headers, data=pdf_bytes)
     operation_url = response.headers["Operation-Location"]
