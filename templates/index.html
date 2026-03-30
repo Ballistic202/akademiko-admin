@@ -342,7 +342,6 @@ async function startOCR() {
   selectedFiles.forEach(f => formData.append('files', f));
   formData.append('subject', document.getElementById('subject').value);
   formData.append('grade', document.getElementById('grade').value);
-  formData.append('publisher', document.getElementById('publisher').value);
   formData.append('chapter', document.getElementById('chapter').value);
   formData.append('session_id', sessionId);
 
