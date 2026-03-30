@@ -8,7 +8,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,sans-serif;background:#f5f5f5;color:#1a1a1a}
 .app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
-.sidebar{background:#fff;border-right:1px solid #e5e5e5;padding:0}
+.sidebar{background:#fff;border-right:1px solid #e5e5e5}
 .logo{padding:1.25rem 1rem;font-size:15px;font-weight:600;border-bottom:1px solid #e5e5e5}
 .nav-item{padding:10px 1rem;font-size:14px;color:#666;cursor:pointer;display:flex;align-items:center;gap:8px;border-left:3px solid transparent}
 .nav-item.active{color:#1a1a1a;font-weight:500;border-left-color:#2563eb;background:#f0f7ff}
@@ -22,29 +22,44 @@ label{font-size:12px;color:#666;display:block;margin-bottom:4px}
 select,input[type=text]{width:100%;padding:8px 10px;font-size:14px;border:1px solid #d5d5d5;border-radius:6px;background:#fff;color:#1a1a1a;outline:none}
 select:focus,input:focus{border-color:#2563eb}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
-.upload-zone{border:2px dashed #d5d5d5;border-radius:10px;padding:2.5rem;text-align:center;cursor:pointer;margin-bottom:1rem;transition:background .2s}
+.upload-zone{border:2px dashed #d5d5d5;border-radius:10px;padding:2rem;text-align:center;cursor:pointer;margin-bottom:1rem;transition:background .2s}
 .upload-zone:hover{background:#f0f7ff;border-color:#2563eb}
 .upload-title{font-size:14px;color:#444;margin-bottom:4px}
 .upload-sub{font-size:12px;color:#999}
-.btn{padding:9px 18px;font-size:14px;border-radius:6px;cursor:pointer;border:1px solid #d5d5d5;background:#fff;color:#1a1a1a;font-weight:500}
+.btn{padding:9px 18px;font-size:14px;border-radius:6px;cursor:pointer;border:1px solid #d5d5d5;background:#fff;color:#1a1a1a;font-weight:500;transition:background .2s}
 .btn:hover{background:#f5f5f5}
+.btn:disabled{opacity:.5;cursor:not-allowed}
 .btn-primary{background:#2563eb;border-color:#1d4ed8;color:#fff}
-.btn-primary:hover{background:#1d4ed8}
+.btn-primary:hover:not(:disabled){background:#1d4ed8}
 .btn-success{background:#16a34a;border-color:#15803d;color:#fff}
-.btn-success:hover{background:#15803d}
+.btn-success:hover:not(:disabled){background:#15803d}
 .btn-danger{background:#fff;border-color:#ef4444;color:#ef4444}
 .btn-danger:hover{background:#fef2f2}
-.btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem}
-.chunk-card{border:1px solid #e5e5e5;border-radius:8px;padding:1rem;margin-bottom:10px;background:#fff}
-.chunk-meta{display:flex;justify-content:space-between;margin-bottom:8px;align-items:flex-start}
-.chunk-id{font-size:11px;font-family:monospace;color:#888}
-.badges{display:flex;gap:6px;flex-wrap:wrap}
-.badge{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500}
-.badge-blue{background:#dbeafe;color:#1e40af}
-.badge-green{background:#dcfce7;color:#166534}
-.badge-amber{background:#fef9c3;color:#854d0e}
-.chunk-text{font-size:13px;color:#333;line-height:1.6;margin-bottom:10px;padding:8px;background:#f9f9f9;border-radius:6px}
-.chunk-actions{display:flex;gap:8px}
+.btn-warning{background:#d97706;border-color:#b45309;color:#fff}
+.btn-warning:hover{background:#b45309}
+.btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem;flex-wrap:wrap}
+.step-indicator{display:flex;align-items:center;gap:0;margin-bottom:1.5rem}
+.step{display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:6px;font-size:13px;font-weight:500;color:#999;border:1px solid #e5e5e5;background:#fff}
+.step.active{color:#2563eb;border-color:#2563eb;background:#f0f7ff}
+.step.done{color:#16a34a;border-color:#16a34a;background:#f0fdf4}
+.step-arrow{color:#ccc;font-size:18px;margin:0 4px}
+.step-num{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;background:#e5e5e5;color:#666}
+.step.active .step-num{background:#2563eb;color:#fff}
+.step.done .step-num{background:#16a34a;color:#fff}
+textarea{width:100%;padding:10px;font-size:13px;border:1px solid #d5d5d5;border-radius:6px;background:#fff;color:#1a1a1a;outline:none;resize:vertical;font-family:system-ui,sans-serif;line-height:1.6}
+textarea:focus{border-color:#2563eb}
+.json-editor{width:100%;padding:10px;font-size:12px;border:1px solid #d5d5d5;border-radius:6px;background:#1e1e1e;color:#d4d4d4;outline:none;resize:vertical;font-family:monospace;line-height:1.5}
+.json-editor:focus{border-color:#2563eb}
+.file-list{margin-top:10px}
+.file-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#f9f9f9;border-radius:6px;margin-bottom:6px;font-size:13px}
+.file-status-ok{font-size:12px;color:#16a34a;font-weight:500}
+.file-status-pending{color:#d97706}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid #e5e5e5;border-top-color:#2563eb;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.alert{padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:12px}
+.alert-success{background:#dcfce7;color:#166534;border:1px solid #bbf7d0}
+.alert-error{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
+.alert-info{background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe}
 .qa-box{border:1px solid #e5e5e5;border-radius:8px;min-height:250px;padding:1rem;margin-bottom:12px;background:#f9f9f9;overflow-y:auto;max-height:400px}
 .msg{margin-bottom:12px}
 .msg-label{font-size:11px;color:#999;margin-bottom:3px}
@@ -57,86 +72,163 @@ select:focus,input:focus{border-color:#2563eb}
 .stat{background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:1rem}
 .stat-num{font-size:26px;font-weight:600}
 .stat-lbl{font-size:12px;color:#666;margin-top:2px}
-.pending-badge{background:#fef9c3;color:#854d0e;font-size:12px;padding:3px 10px;border-radius:20px;font-weight:500}
-.progress-bar{height:4px;background:#e5e5e5;border-radius:2px;margin-top:6px}
-.progress-fill{height:4px;background:#2563eb;border-radius:2px}
-.file-list{margin-top:10px}
-.file-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#f9f9f9;border-radius:6px;margin-bottom:6px;font-size:13px}
-.file-status{font-size:12px;color:#16a34a;font-weight:500}
-.file-pending{color:#d97706}
-.spinner{display:inline-block;width:14px;height:14px;border:2px solid #e5e5e5;border-top-color:#2563eb;border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.alert{padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:12px}
-.alert-success{background:#dcfce7;color:#166534;border:1px solid #bbf7d0}
-.alert-error{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
-.sep{height:1px;background:#e5e5e5;margin:.75rem 0}
+.section-title{font-size:14px;font-weight:600;margin-bottom:.75rem;color:#333}
+.ocr-text-container{position:relative}
+.ocr-actions{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center}
+.char-count{font-size:12px;color:#999;margin-left:auto}
+.paste-zone{border:2px dashed #d5d5d5;border-radius:8px;padding:1rem;text-align:center;cursor:pointer;font-size:13px;color:#666;margin-bottom:8px}
+.paste-zone:hover{background:#f0f7ff;border-color:#2563eb}
+.chunk-preview{border:1px solid #e5e5e5;border-radius:6px;padding:10px;margin-bottom:6px;background:#f9f9f9;font-size:12px}
+.chunk-preview-id{font-family:monospace;color:#666;margin-bottom:4px}
+.chunk-preview-text{color:#333;line-height:1.5}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="sidebar">
     <div class="logo">Академико Admin</div>
-    <div class="nav-item active" onclick="show('upload')">Качване</div>
-    <div class="nav-item" onclick="show('review')">Преглед на части <span id="pending-count" style="display:none" class="pending-badge">0</span></div>
+    <div class="nav-item active" onclick="show('upload')">Качване и OCR</div>
+    <div class="nav-item" onclick="show('review')">Преглед на части</div>
     <div class="nav-item" onclick="show('qa')">Тестване на Q&A</div>
     <div class="nav-item" onclick="show('stats')">Статистика</div>
   </div>
 
   <div class="content">
 
+    <!-- КАЧВАНЕ И OCR -->
     <div class="page active" id="page-upload">
       <div class="page-title">Качване на учебни материали</div>
-      <div class="card">
-        <div class="field-row">
-          <div><label>Предмет</label>
-            <select id="subject">
-              <option>Човекът и природата</option>
-              <option>Математика</option>
-              <option>Български език и литература</option>
-              <option>История и цивилизации</option>
-              <option>Географии и икономика</option>
-              <option>Технологии и предприемачество</option>
-              <option>Биология</option>
-              <option>Физика</option>
-              <option>Химия</option>
-            </select>
+
+      <div class="step-indicator">
+        <div class="step active" id="step1"><span class="step-num">1</span>OCR и проверка</div>
+        <div class="step-arrow">›</div>
+        <div class="step" id="step2"><span class="step-num">2</span>AI chunk-ване</div>
+        <div class="step-arrow">›</div>
+        <div class="step" id="step3"><span class="step-num">3</span>Запазване</div>
+      </div>
+
+      <!-- Стъпка 1 -->
+      <div id="phase1">
+        <div class="card">
+          <div class="section-title">Метаданни</div>
+          <div class="field-row">
+            <div><label>Предмет</label>
+              <select id="subject">
+                <option>Човекът и природата</option>
+                <option>Математика</option>
+                <option>Български език и литература</option>
+                <option>История и цивилизации</option>
+                <option>Географии и икономика</option>
+                <option>Биология</option>
+                <option>Физика</option>
+                <option>Химия</option>
+                <option>Технологии и предприемачество</option>
+              </select>
+            </div>
+            <div><label>Клас</label>
+              <select id="grade">
+                <option value="1">1. клас</option>
+                <option value="2">2. клас</option>
+                <option value="3">3. клас</option>
+                <option value="4" selected>4. клас</option>
+                <option value="5">5. клас</option>
+                <option value="6">6. клас</option>
+                <option value="7">7. клас</option>
+                <option value="8">8. клас</option>
+                <option value="9">9. клас</option>
+                <option value="10">10. клас</option>
+                <option value="11">11. клас</option>
+                <option value="12">12. клас</option>
+              </select>
+            </div>
           </div>
-          <div><label>Клас</label>
-            <select id="grade">
-              <option value="1">1. клас</option>
-              <option value="2">2. клас</option>
-              <option value="3">3. клас</option>
-              <option value="4" selected>4. клас</option>
-              <option value="5">5. клас</option>
-              <option value="6">6. клас</option>
-              <option value="7">7. клас</option>
-            </select>
+          <div class="field-row">
+            <div><label>Издателство / учебник</label>
+              <input type="text" id="publisher" placeholder="напр. Просвета 2024">
+            </div>
+            <div><label>Глава / тема (по избор)</label>
+              <input type="text" id="chapter" placeholder="напр. Жизнени процеси">
+            </div>
           </div>
         </div>
-        <div class="field-row">
-          <div><label>Издателство / учебник</label>
-            <input type="text" id="publisher" placeholder="напр. Просвета 2024">
+
+        <div class="card">
+          <div class="section-title">Файлове</div>
+          <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+            <div class="upload-title">Плъзнете PNG файлове тук или кликнете за избор</div>
+            <div class="upload-sub">Един или повече файла от един урок/тема → ще се обединят в един текст</div>
+            <input type="file" id="file-input" multiple accept=".png,.jpg,.jpeg" style="display:none" onchange="filesSelected(this.files)">
           </div>
-          <div><label>Глава / тема (по избор)</label>
-            <input type="text" id="chapter" placeholder="напр. Жизнени процеси">
+          <div class="file-list" id="file-list"></div>
+          <div id="upload-alert"></div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btn-ocr" onclick="startOCR()">Стартирай OCR</button>
           </div>
-        </div>
-        <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-          <div class="upload-title">Плъзнете PNG файлове тук или кликнете за избор</div>
-          <div class="upload-sub">Поддържат се PNG и JPG · Страниците ще бъдат обработени с OCR автоматично</div>
-          <input type="file" id="file-input" multiple accept=".png,.jpg,.jpeg" style="display:none" onchange="filesSelected(this.files)">
-        </div>
-        <div class="file-list" id="file-list"></div>
-        <div id="upload-alert"></div>
-        <div class="btn-row">
-          <button class="btn btn-primary" onclick="startOCR()">Стартирай OCR и разбий на части</button>
         </div>
       </div>
+
+      <!-- Стъпка 1б: Преглед и редакция на OCR текст -->
+      <div id="phase2" style="display:none">
+        <div class="card">
+          <div class="section-title">OCR резултат — прегледайте и коригирайте текста</div>
+          <div class="ocr-actions">
+            <button class="btn" onclick="downloadOCR()">Свали .txt</button>
+            <label class="btn" style="cursor:pointer">
+              Качи редактиран .txt
+              <input type="file" accept=".txt" style="display:none" onchange="uploadEditedTxt(this)">
+            </label>
+            <span class="char-count" id="char-count"></span>
+          </div>
+          <div class="ocr-text-container">
+            <textarea id="ocr-textarea" rows="20" placeholder="OCR текст..." oninput="updateCharCount()"></textarea>
+          </div>
+          <div id="ocr-alert"></div>
+          <div class="btn-row">
+            <button class="btn" onclick="resetUpload()">← Назад</button>
+            <button class="btn btn-success" onclick="confirmOCR()">Потвърди текста и продължи →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Стъпка 2: AI Chunking -->
+      <div id="phase3" style="display:none">
+        <div class="card">
+          <div class="section-title">AI разбиване на chunk-ове</div>
+          <p style="font-size:13px;color:#666;margin-bottom:1rem">Текстът е потвърден. Натиснете бутона за да изпратите текста към AI за анализ и разбиване на смислени части.</p>
+          <div id="chunking-alert"></div>
+          <div class="btn-row">
+            <button class="btn" onclick="backToOCR()">← Редактирай текста</button>
+            <button class="btn btn-primary" id="btn-chunk" onclick="startChunking()">Разбий на chunk-ове с AI</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Стъпка 3: Редакция на JSON и запазване -->
+      <div id="phase4" style="display:none">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <div class="section-title" style="margin:0">JSON редактор на chunk-ове</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span id="chunk-count" style="font-size:12px;color:#666"></span>
+              <button class="btn" style="font-size:12px;padding:5px 10px" onclick="validateJSON()">Провери JSON</button>
+            </div>
+          </div>
+          <p style="font-size:12px;color:#666;margin-bottom:10px">Редактирайте JSON директно ако е нужно. Когато сте готови натиснете "Запази и индексирай".</p>
+          <div id="json-alert"></div>
+          <textarea class="json-editor" id="json-editor" rows="25"></textarea>
+          <div class="btn-row">
+            <button class="btn" onclick="backToChunking()">← Разбий отново</button>
+            <button class="btn btn-success" id="btn-save" onclick="saveChunks()">Запази и индексирай</button>
+          </div>
+        </div>
+      </div>
+
     </div>
 
+    <!-- ПРЕГЛЕД НА ЧАСТИ -->
     <div class="page" id="page-review">
       <div class="page-title">Преглед и одобрение на части</div>
-      <div id="review-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
         <span id="review-subtitle" style="font-size:13px;color:#666"></span>
         <div style="display:flex;gap:8px">
           <button class="btn btn-success" onclick="approveAll()">Одобри всички</button>
@@ -147,6 +239,7 @@ select:focus,input:focus{border-color:#2563eb}
       <div id="chunks-container"></div>
     </div>
 
+    <!-- Q&A -->
     <div class="page" id="page-qa">
       <div class="page-title">Тестване на Q&A</div>
       <div class="card">
@@ -157,6 +250,12 @@ select:focus,input:focus{border-color:#2563eb}
               <option>Човекът и природата</option>
               <option>Математика</option>
               <option>Български език и литература</option>
+              <option>История и цивилизации</option>
+              <option>Географии и икономика</option>
+              <option>Биология</option>
+              <option>Физика</option>
+              <option>Химия</option>
+              <option>Технологии и предприемачество</option>
             </select>
           </div>
           <div><label>Клас</label>
@@ -164,6 +263,8 @@ select:focus,input:focus{border-color:#2563eb}
               <option value="">Всички класове</option>
               <option value="4">4. клас</option>
               <option value="5">5. клас</option>
+              <option value="6">6. клас</option>
+              <option value="7">7. клас</option>
             </select>
           </div>
         </div>
@@ -177,6 +278,7 @@ select:focus,input:focus{border-color:#2563eb}
       </div>
     </div>
 
+    <!-- СТАТИСТИКА -->
     <div class="page" id="page-stats">
       <div class="page-title">Статистика</div>
       <div class="stats">
@@ -185,7 +287,7 @@ select:focus,input:focus{border-color:#2563eb}
         <div class="stat"><div class="stat-num" id="s-total">—</div><div class="stat-lbl">Общо части</div></div>
       </div>
       <div class="card">
-        <div style="font-size:14px;font-weight:600;margin-bottom:1rem">Последно качени</div>
+        <div class="section-title">Последно добавени</div>
         <div id="stats-list" style="font-size:13px;color:#666">Зарежда се...</div>
       </div>
     </div>
@@ -194,7 +296,10 @@ select:focus,input:focus{border-color:#2563eb}
 </div>
 
 <script>
-const ADMIN_URL = '';
+let selectedFiles = [];
+let sessionId = '';
+let ocrText = '';
+let currentChunkFile = '';
 
 function show(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -206,59 +311,214 @@ function show(page) {
   if(page === 'stats') loadStats();
 }
 
-let selectedFiles = [];
+function setStep(n) {
+  for(let i=1;i<=3;i++) {
+    const el = document.getElementById('step'+i);
+    el.classList.remove('active','done');
+    if(i < n) el.classList.add('done');
+    else if(i === n) el.classList.add('active');
+  }
+}
+
 function filesSelected(files) {
   selectedFiles = Array.from(files);
   const list = document.getElementById('file-list');
   list.innerHTML = selectedFiles.map(f =>
-    `<div class="file-item"><span>${f.name}</span><span class="file-pending">Готов за качване</span></div>`
+    `<div class="file-item"><span>${f.name}</span><span class="file-status-pending">Готов</span></div>`
   ).join('');
 }
 
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.background='#f0f7ff'; });
+dz.addEventListener('dragleave', () => { dz.style.background=''; });
+dz.addEventListener('drop', e => { e.preventDefault(); dz.style.background=''; filesSelected(e.dataTransfer.files); });
+
 async function startOCR() {
-  if(!selectedFiles.length) {
-    alert('Моля изберете файлове за качване.');
+  if(!selectedFiles.length) { alert('Моля изберете файлове.'); return; }
+
+  sessionId = Date.now().toString();
+  const btn = document.getElementById('btn-ocr');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> OCR в процес...';
+
+  const formData = new FormData();
+  selectedFiles.forEach(f => formData.append('files', f));
+  formData.append('subject', document.getElementById('subject').value);
+  formData.append('grade', document.getElementById('grade').value);
+  formData.append('publisher', document.getElementById('publisher').value);
+  formData.append('chapter', document.getElementById('chapter').value);
+  formData.append('session_id', sessionId);
+
+  try {
+    const res = await fetch('/ocr-batch', {method:'POST', body: formData});
+    const data = await res.json();
+    if(data.status === 'ok') {
+      ocrText = data.text;
+      document.getElementById('ocr-textarea').value = ocrText;
+      updateCharCount();
+      document.getElementById('phase1').style.display = 'none';
+      document.getElementById('phase2').style.display = 'block';
+      setStep(1);
+    } else {
+      document.getElementById('upload-alert').innerHTML = `<div class="alert alert-error">Грешка: ${data.message}</div>`;
+    }
+  } catch(e) {
+    document.getElementById('upload-alert').innerHTML = '<div class="alert alert-error">Грешка при OCR.</div>';
+  }
+  btn.disabled = false;
+  btn.innerHTML = 'Стартирай OCR';
+}
+
+function updateCharCount() {
+  const txt = document.getElementById('ocr-textarea').value;
+  document.getElementById('char-count').textContent = `${txt.length} символа`;
+}
+
+function downloadOCR() {
+  const text = document.getElementById('ocr-textarea').value;
+  const blob = new Blob([text], {type:'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `ocr_${sessionId}.txt`;
+  a.click();
+}
+
+function uploadEditedTxt(input) {
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('ocr-textarea').value = e.target.result;
+    updateCharCount();
+    document.getElementById('ocr-alert').innerHTML = '<div class="alert alert-success">Файлът е зареден успешно.</div>';
+    setTimeout(() => document.getElementById('ocr-alert').innerHTML = '', 3000);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+async function confirmOCR() {
+  ocrText = document.getElementById('ocr-textarea').value;
+  if(!ocrText.trim()) { alert('Текстът е празен.'); return; }
+
+  const res = await fetch(`/ocr-confirmed/${sessionId}.txt`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({text: ocrText})
+  });
+  const data = await res.json();
+  if(data.status === 'ok') {
+    document.getElementById('phase2').style.display = 'none';
+    document.getElementById('phase3').style.display = 'block';
+    setStep(2);
+  }
+}
+
+function backToOCR() {
+  document.getElementById('phase3').style.display = 'none';
+  document.getElementById('phase2').style.display = 'block';
+  setStep(1);
+}
+
+function backToChunking() {
+  document.getElementById('phase4').style.display = 'none';
+  document.getElementById('phase3').style.display = 'block';
+  setStep(2);
+}
+
+async function startChunking() {
+  const btn = document.getElementById('btn-chunk');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> AI анализира...';
+  document.getElementById('chunking-alert').innerHTML = '<div class="alert alert-info">AI разбива текста на chunk-ове. Това може да отнеме 20-40 секунди...</div>';
+
+  try {
+    const res = await fetch('/chunk-ai', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        text: ocrText,
+        subject: document.getElementById('subject').value,
+        grade: document.getElementById('grade').value,
+        publisher: document.getElementById('publisher').value,
+        chapter: document.getElementById('chapter').value,
+        session_id: sessionId
+      })
+    });
+    const data = await res.json();
+    if(data.status === 'ok') {
+      currentChunkFile = data.filename;
+      document.getElementById('json-editor').value = JSON.stringify(data.chunks, null, 2);
+      document.getElementById('chunk-count').textContent = `${data.chunks.length} chunk-а`;
+      document.getElementById('phase3').style.display = 'none';
+      document.getElementById('phase4').style.display = 'block';
+      setStep(3);
+    } else {
+      document.getElementById('chunking-alert').innerHTML = '<div class="alert alert-error">Грешка при chunk-ване.</div>';
+    }
+  } catch(e) {
+    document.getElementById('chunking-alert').innerHTML = '<div class="alert alert-error">Грешка при свързване.</div>';
+  }
+  btn.disabled = false;
+  btn.innerHTML = 'Разбий на chunk-ове с AI';
+}
+
+function validateJSON() {
+  try {
+    const parsed = JSON.parse(document.getElementById('json-editor').value);
+    document.getElementById('json-alert').innerHTML = `<div class="alert alert-success">JSON е валиден — ${parsed.length} chunk-а.</div>`;
+    document.getElementById('chunk-count').textContent = `${parsed.length} chunk-а`;
+    setTimeout(() => document.getElementById('json-alert').innerHTML = '', 3000);
+  } catch(e) {
+    document.getElementById('json-alert').innerHTML = `<div class="alert alert-error">Невалиден JSON: ${e.message}</div>`;
+  }
+}
+
+async function saveChunks() {
+  let chunks;
+  try {
+    chunks = JSON.parse(document.getElementById('json-editor').value);
+  } catch(e) {
+    document.getElementById('json-alert').innerHTML = '<div class="alert alert-error">Невалиден JSON — поправете грешките преди запазване.</div>';
     return;
   }
-  const subject = document.getElementById('subject').value;
-  const grade = document.getElementById('grade').value;
-  const publisher = document.getElementById('publisher').value;
-  const chapter = document.getElementById('chapter').value;
 
-  const list = document.getElementById('file-list');
-  const alert_el = document.getElementById('upload-alert');
-  let success = 0;
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Запазване...';
 
-  for(let i = 0; i < selectedFiles.length; i++) {
-    const f = selectedFiles[i];
-    const items = list.querySelectorAll('.file-item');
-    items[i].querySelector('.file-pending').innerHTML = '<span class="spinner"></span>';
-
-    const formData = new FormData();
-    formData.append('file', f);
-    formData.append('subject', subject);
-    formData.append('grade', grade);
-    formData.append('publisher', publisher);
-    formData.append('chapter', chapter);
-
-    try {
-      const res = await fetch('/upload-ocr', {method:'POST', body: formData});
-      const data = await res.json();
-      if(data.status === 'ok') {
-        items[i].querySelector('.file-pending').innerHTML = `<span class="file-status">${data.chunks} части</span>`;
-        success++;
-      } else {
-        items[i].querySelector('.file-pending').textContent = 'Грешка';
-      }
-    } catch(e) {
-      items[i].querySelector('.file-pending').textContent = 'Грешка';
+  try {
+    const res = await fetch('/save-chunks', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({filename: currentChunkFile, chunks: chunks})
+    });
+    const data = await res.json();
+    if(data.status === 'ok') {
+      document.getElementById('json-alert').innerHTML = `<div class="alert alert-success">${data.count} chunk-а са запазени успешно в базата знания!</div>`;
+      setTimeout(() => resetUpload(), 3000);
     }
+  } catch(e) {
+    document.getElementById('json-alert').innerHTML = '<div class="alert alert-error">Грешка при запазване.</div>';
   }
+  btn.disabled = false;
+  btn.innerHTML = 'Запази и индексирай';
+}
 
-  if(success > 0) {
-    alert_el.innerHTML = `<div class="alert alert-success">Успешно обработени ${success} файла. Отидете на "Преглед на части" за одобрение.</div>`;
-    document.getElementById('pending-count').style.display = 'inline';
-  }
+function resetUpload() {
+  selectedFiles = [];
+  sessionId = '';
+  ocrText = '';
+  currentChunkFile = '';
+  document.getElementById('file-list').innerHTML = '';
+  document.getElementById('upload-alert').innerHTML = '';
+  document.getElementById('ocr-textarea').value = '';
+  document.getElementById('json-editor').value = '';
+  document.getElementById('file-input').value = '';
+  document.getElementById('phase1').style.display = 'block';
+  document.getElementById('phase2').style.display = 'none';
+  document.getElementById('phase3').style.display = 'none';
+  document.getElementById('phase4').style.display = 'none';
+  setStep(1);
 }
 
 async function loadPending() {
@@ -266,115 +526,96 @@ async function loadPending() {
   const data = await res.json();
   const files = data.pending || [];
   document.getElementById('review-subtitle').textContent = `${files.length} файла чакат одобрение`;
-  document.getElementById('pending-count').textContent = files.length;
-  document.getElementById('pending-count').style.display = files.length > 0 ? 'inline' : 'none';
-
   const container = document.getElementById('chunks-container');
   if(!files.length) {
     container.innerHTML = '<div style="text-align:center;color:#999;padding:2rem;font-size:14px">Няма части за преглед</div>';
     return;
   }
-
   container.innerHTML = '';
   for(const filename of files) {
     try {
       const res = await fetch(`/chunks/${filename}`);
       const chunks = await res.json();
-      chunks.forEach((chunk, i) => {
-        const div = document.createElement('div');
-        div.className = 'chunk-card';
-        div.id = `chunk-${filename}-${i}`;
-        div.innerHTML = `
-          <div class="chunk-meta">
-            <div class="chunk-id">${chunk.chunk_id || filename} · стр. ${chunk.page || '?'}</div>
-            <div class="badges">
-              ${chunk.subject ? `<span class="badge badge-blue">${chunk.subject}</span>` : ''}
-              ${chunk.grade ? `<span class="badge badge-green">${chunk.grade}. клас</span>` : ''}
-              ${chunk.content_type ? `<span class="badge badge-amber">${chunk.content_type}</span>` : ''}
-            </div>
-          </div>
-          <div class="chunk-text">${chunk.text_content || chunk.content || ''}</div>
-          <div class="chunk-actions">
-            <button class="btn btn-success" style="font-size:12px;padding:5px 12px" onclick="approveFile('${filename}')">Одобри файла</button>
-            <button class="btn btn-danger" style="font-size:12px;padding:5px 12px" onclick="rejectFile('${filename}')">Откажи файла</button>
-          </div>`;
-        container.appendChild(div);
-      });
-    } catch(e) {
       const div = document.createElement('div');
-      div.className = 'chunk-card';
-      div.innerHTML = `<div class="chunk-id">${filename}</div>
-        <div class="chunk-actions" style="margin-top:8px">
+      div.className = 'card';
+      div.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:600">${filename}</div>
+          <div style="font-size:12px;color:#666">${chunks.length} chunk-а</div>
+        </div>
+        ${chunks.slice(0,3).map(c => `
+          <div class="chunk-preview">
+            <div class="chunk-preview-id">${c.chunk_id || '—'} · ${c.subject || ''} ${c.grade ? c.grade+'. клас' : ''}</div>
+            <div class="chunk-preview-text">${(c.text_content || '').substring(0,200)}${(c.text_content||'').length > 200 ? '...' : ''}</div>
+          </div>`).join('')}
+        ${chunks.length > 3 ? `<div style="font-size:12px;color:#999;margin:6px 0">... и още ${chunks.length-3} chunk-а</div>` : ''}
+        <div style="display:flex;gap:8px;margin-top:10px">
           <button class="btn btn-success" style="font-size:12px;padding:5px 12px" onclick="approveFile('${filename}')">Одобри</button>
           <button class="btn btn-danger" style="font-size:12px;padding:5px 12px" onclick="rejectFile('${filename}')">Откажи</button>
         </div>`;
       container.appendChild(div);
-    }
+    } catch(e) {}
   }
 }
 
 async function approveFile(filename) {
-  const res = await fetch(`/approve/${filename}`, {method:'POST'});
-  const data = await res.json();
-  if(data.status === 'approved') {
-    document.getElementById('review-alert').innerHTML = '<div class="alert alert-success">Одобрено успешно!</div>';
-    loadPending();
-  }
+  await fetch(`/approve/${filename}`, {method:'POST'});
+  document.getElementById('review-alert').innerHTML = '<div class="alert alert-success">Одобрено!</div>';
+  setTimeout(() => document.getElementById('review-alert').innerHTML = '', 2000);
+  loadPending();
 }
 
 async function rejectFile(filename) {
-  const res = await fetch(`/reject/${filename}`, {method:'POST'});
-  if(res.ok) {
-    document.getElementById('review-alert').innerHTML = '<div class="alert alert-error">Файлът е отказан и изтрит.</div>';
-    loadPending();
-  }
+  await fetch(`/reject/${filename}`, {method:'POST'});
+  loadPending();
 }
 
 async function approveAll() {
   const res = await fetch('/pending');
   const data = await res.json();
-  for(const f of data.pending || []) {
-    await fetch(`/approve/${f}`, {method:'POST'});
-  }
-  document.getElementById('review-alert').innerHTML = '<div class="alert alert-success">Всички части са одобрени!</div>';
+  for(const f of data.pending || []) await fetch(`/approve/${f}`, {method:'POST'});
+  document.getElementById('review-alert').innerHTML = '<div class="alert alert-success">Всички одобрени!</div>';
+  setTimeout(() => document.getElementById('review-alert').innerHTML = '', 2000);
   loadPending();
 }
 
 async function rejectAll() {
-  if(!confirm('Сигурни ли сте? Всички чакащи части ще бъдат изтрити.')) return;
+  if(!confirm('Сигурни ли сте?')) return;
   const res = await fetch('/pending');
   const data = await res.json();
-  for(const f of data.pending || []) {
-    await fetch(`/reject/${f}`, {method:'POST'});
-  }
+  for(const f of data.pending || []) await fetch(`/reject/${f}`, {method:'POST'});
   loadPending();
 }
 
-let qaMessages = [];
 async function sendQuestion() {
   const input = document.getElementById('qa-input');
   const q = input.value.trim();
   if(!q) return;
   input.value = '';
-
   const box = document.getElementById('qa-messages');
+  const firstMsg = box.querySelector('div[style]');
+  if(firstMsg) firstMsg.remove();
   box.innerHTML += `<div class="msg"><div class="msg-label">Вие</div><div class="bubble bubble-user">${q}</div></div>`;
-  box.innerHTML += `<div class="msg" id="ai-msg"><div class="msg-label">Академико</div><div class="bubble bubble-ai"><span class="spinner"></span></div></div>`;
+  const aiDiv = document.createElement('div');
+  aiDiv.className = 'msg';
+  aiDiv.id = 'ai-msg-' + Date.now();
+  aiDiv.innerHTML = '<div class="msg-label">Академико</div><div class="bubble bubble-ai"><span class="spinner"></span></div>';
+  box.appendChild(aiDiv);
   box.scrollTop = box.scrollHeight;
-
-  const grade = document.getElementById('qa-grade').value;
-  const subject = document.getElementById('qa-subject').value;
-
-  const body = {question: q};
-  if(grade) body.grade = parseInt(grade);
-  if(subject) body.subject = subject;
-
   try {
-    const res = await fetch('/qa', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    const res = await fetch('/qa', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        question: q,
+        grade: document.getElementById('qa-grade').value || null,
+        subject: document.getElementById('qa-subject').value || null
+      })
+    });
     const data = await res.json();
-    document.getElementById('ai-msg').querySelector('.bubble-ai').textContent = data.answer || 'Няма отговор.';
+    aiDiv.querySelector('.bubble-ai').textContent = data.answer || 'Няма отговор.';
   } catch(e) {
-    document.getElementById('ai-msg').querySelector('.bubble-ai').textContent = 'Грешка при свързване.';
+    aiDiv.querySelector('.bubble-ai').textContent = 'Грешка при свързване.';
   }
   box.scrollTop = box.scrollHeight;
 }
@@ -385,24 +626,13 @@ async function loadStats() {
     const data = await res.json();
     document.getElementById('s-approved').textContent = data.approved || 0;
     document.getElementById('s-pending').textContent = data.pending || 0;
-    document.getElementById('s-total').textContent = (data.approved || 0) + (data.pending || 0);
+    document.getElementById('s-total').textContent = (data.approved||0)+(data.pending||0);
     const list = document.getElementById('stats-list');
-    if(data.recent && data.recent.length) {
-      list.innerHTML = data.recent.map(f =>
-        `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #e5e5e5"><span>${f}</span></div>`
-      ).join('');
-    } else {
-      list.textContent = 'Няма данни';
-    }
-  } catch(e) {
-    document.getElementById('stats-list').textContent = 'Грешка при зареждане';
-  }
+    list.innerHTML = data.recent && data.recent.length
+      ? data.recent.map(f => `<div style="padding:6px 0;border-bottom:1px solid #e5e5e5;font-size:13px">${f}</div>`).join('')
+      : 'Няма данни';
+  } catch(e) {}
 }
-
-const dz = document.getElementById('drop-zone');
-dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.background = '#f0f7ff'; });
-dz.addEventListener('dragleave', () => { dz.style.background = ''; });
-dz.addEventListener('drop', e => { e.preventDefault(); dz.style.background = ''; filesSelected(e.dataTransfer.files); });
 </script>
 </body>
 </html>
