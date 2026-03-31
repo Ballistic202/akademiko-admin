@@ -244,7 +244,7 @@ def qa():
         "search": question,
         "vectorQueries": [{"kind": "vector", "vector": vector, "fields": "snippet_vector", "k": 10}],
         "select": "text_content,blob_url",
-        "top": 5
+        "top": 5,
         "queryType": "semantic",
         "semanticConfiguration": "default"
     }
