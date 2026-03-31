@@ -170,7 +170,7 @@ def chunk_ai():
 Текст за chunk-ване:
 {text}"""
 
-    chat_url = f"{openai_endpoint}openai/deployments/gpt-4-1/chat/completions?api-version=2024-02-01"
+    chat_url = f"{openai_endpoint}openai/deployments/gpt-4.1/chat/completions?api-version=2024-02-01"
     chat_res = req.post(chat_url,
         headers={"api-key": openai_key, "Content-Type": "application/json"},
         json={
