@@ -245,8 +245,6 @@ def qa():
         "vectorQueries": [{"kind": "vector", "vector": vector, "fields": "snippet_vector", "k": 10}],
         "select": "text_content,blob_url",
         "top": 5,
-        "queryType": "semantic",
-        "semanticConfiguration": "default"
     }
     search_res = req.post(search_url,
         headers={"api-key": search_key, "Content-Type": "application/json"},
