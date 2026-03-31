@@ -182,7 +182,7 @@ def chunk_ai():
             "temperature": 0.1
         }
     )
-
+    app.logger.info(f"GPT raw response: {chat_res.json()}")
     raw = chat_res.json()["choices"][0]["message"]["content"].strip()
     raw = raw.replace("```json", "").replace("```", "").strip()
 
