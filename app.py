@@ -242,9 +242,11 @@ def qa():
     search_url = f"{search_endpoint}indexes/akademiko-knowledge-source-index/docs/search?api-version=2024-07-01"
     search_body = {
         "search": question,
-        "vectorQueries": [{"kind": "vector", "vector": vector, "fields": "snippet_vector", "k": 5}],
+        "vectorQueries": [{"kind": "vector", "vector": vector, "fields": "snippet_vector", "k": 10}],
         "select": "text_content,blob_url",
-        "top": 3
+        "top": 5
+        "queryType": "semantic",
+        "semanticConfiguration": "default"
     }
     search_res = req.post(search_url,
         headers={"api-key": search_key, "Content-Type": "application/json"},
