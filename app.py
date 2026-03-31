@@ -253,7 +253,7 @@ def qa():
         json=search_body
     )
     results = search_res.json().get("value", [])
-    context = "\n\n".join([r.get("text_content") or r.get("snippet") or "" for r in results])
+    context = "\n\n".join([r.get("text_content") or r.get("snippet") or "" for r in results if r.get("text_content") or r.get("snippet")])
 
     if not context.strip():
         return jsonify({"answer": "Нямам информация по този въпрос в наличните учебни материали."})
