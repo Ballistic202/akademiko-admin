@@ -608,7 +608,14 @@ async function sendQuestion() {
       })
     });
     const data = await res.json();
-    aiDiv.querySelector('.bubble-ai').textContent = data.answer || 'Няма отговор.';
+    const bubble = aiDiv.querySelector('.bubble-ai');
+    bubble.textContent = data.answer || 'Няма отговор.';
+    if(data.image_url) {
+        const img = document.createElement('img');
+        img.src = data.image_url;
+        img.style.cssText = 'max-width:100%;border-radius:6px;margin-top:10px;display:block';
+        img.onerror = () => img.remove();
+        bubble.appendChild(img);
   } catch(e) {
     aiDiv.querySelector('.bubble-ai').textContent = 'Грешка при свързване.';
   }
