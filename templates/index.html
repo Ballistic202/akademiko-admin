@@ -616,6 +616,7 @@ async function sendQuestion() {
         img.style.cssText = 'max-width:100%;border-radius:6px;margin-top:10px;display:block';
         img.onerror = () => img.remove();
         bubble.appendChild(img);
+    }
   } catch(e) {
     aiDiv.querySelector('.bubble-ai').textContent = 'Грешка при свързване.';
   }
