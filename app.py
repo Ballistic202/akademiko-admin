@@ -268,6 +268,21 @@ def qa():
         }
     )
     answer = chat_res.json()["choices"][0]["message"]["content"]
+    # Image search
+    image_url = None
+    try:
+        bing_key = os.environ.get("BING_KEY", "")
+        if bing_key:
+            img_res = req.get(
+                "https://api.bing.microsoft.com/v7.0/images/search",
+                headers={"Ocp-Apim-Subscription-Key": bing_key},
+                params={"q": question, "count": 1, "safeSearch": "Strict", "imageType": "Photo"}
+            )
+            images = img_res.json().get("value", [])
+            if images:
+                image_url = images[0].get("contentUrl")
+    except Exception:
+        pass
     return jsonify({"answer": answer})
 
 # ─── СТАТИСТИКА ───────────────────────────────────────────────────────────────
