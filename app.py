@@ -283,7 +283,9 @@ def qa():
                 image_url = images[0].get("contentUrl")
     except Exception:
         pass
-    return jsonify({"answer": answer})
+    app.logger.error(f"Image URL: {image_url}")
+    return jsonify({"answer": answer, "image_url": image_url})
+    
 
 # ─── СТАТИСТИКА ───────────────────────────────────────────────────────────────
 
