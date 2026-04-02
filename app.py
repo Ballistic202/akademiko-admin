@@ -271,22 +271,24 @@ def qa():
     # Image search
     image_url = None
     try:
-        bing_key = os.environ.get("BING_KEY", "")
-        if bing_key:
+        serp_key = os.environ.get("SERP_KEY", "")
+        if serp_key:
             img_res = req.get(
-                "https://api.bing.microsoft.com/v7.0/images/search",
-                headers={"Ocp-Apim-Subscription-Key": bing_key},
-                params={"q": question, "count": 1, "safeSearch": "Strict", "imageType": "Photo"}
+                "https://serpapi.com/search.json",
+                params={
+                    "engine": "google_images",
+                    "q": question,
+                    "api_key": serp_key,
+                    "num": 1
+                }
             )
-            images = img_res.json().get("value", [])
+            images = img_res.json().get("images_results", [])
             if images:
-                image_url = images[0].get("contentUrl")
-    except Exception:
+                image_url = images[0].get("original")
+    except Exception as e:
+        app.logger.error(f"SerpApi error: {e}")
         pass
-    app.logger.error(f"Image URL: {image_url}")
-    return jsonify({"answer": answer, "image_url": image_url})
     
-
 # ─── СТАТИСТИКА ───────────────────────────────────────────────────────────────
 
 @app.route("/stats", methods=["GET"])
