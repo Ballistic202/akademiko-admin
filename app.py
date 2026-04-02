@@ -111,11 +111,13 @@ def ocr_batch():
         "chapter": chapter
     })
 
+
 @app.route("/ocr-confirmed/<filename>", methods=["GET"])
 def get_ocr_text(filename):
     blob = blob_client.get_blob_client("ocr-confirmed", filename)
     content = blob.download_blob().readall()
     return jsonify({"text": content.decode("utf-8")})
+
 
 @app.route("/ocr-confirmed/<filename>", methods=["POST"])
 def save_ocr_text(filename):
@@ -200,6 +202,7 @@ def chunk_ai():
         "filename": output_name
     })
 
+
 @app.route("/save-chunks", methods=["POST"])
 def save_chunks():
     data = request.json
@@ -272,13 +275,24 @@ def qa():
     try:
         serp_key = os.environ.get("SERP_KEY", "")
         if serp_key:
+            kw_res = req.post(chat_url,
+                headers={"api-key": openai_key, "Content-Type": "application/json"},
+                json={
+                    "messages": [
+                        {"role": "system", "content": "Извлечи 2-3 ключови думи от текста подходящи за търсене на изображение. Върни САМО думите разделени с интервал, без никакъв друг текст."},
+                        {"role": "user", "content": answer}
+                    ],
+                    "max_tokens": 30
+                }
+            )
+            search_query = kw_res.json()["choices"][0]["message"]["content"].strip()
             img_res = req.get(
                 "https://serpapi.com/search.json",
                 params={
                     "engine": "google_images",
-                    "q": question,
+                    "q": search_query,
                     "api_key": serp_key,
-                    "num": 1
+                    "num": 3
                 }
             )
             images = img_res.json().get("images_results", [])
@@ -301,6 +315,7 @@ def stats():
         "pending": len(pending),
         "recent": recent
     })
+
 
 if __name__ == "__main__":
     app.run()
