@@ -182,7 +182,6 @@ def chunk_ai():
             "temperature": 0.1
         }
     )
-    app.logger.error(f"GPT raw response: {chat_res.json()}")
     raw = chat_res.json()["choices"][0]["message"]["content"].strip()
     raw = raw.replace("```json", "").replace("```", "").strip()
 
@@ -244,7 +243,7 @@ def qa():
         "search": question,
         "vectorQueries": [{"kind": "vector", "vector": vector, "fields": "snippet_vector", "k": 10}],
         "select": "text_content,blob_url",
-        "top": 5,
+        "top": 5
     }
     search_res = req.post(search_url,
         headers={"api-key": search_key, "Content-Type": "application/json"},
@@ -254,7 +253,7 @@ def qa():
     context = "\n\n".join([r.get("text_content") or r.get("snippet") or "" for r in results if r.get("text_content") or r.get("snippet")])
 
     if not context.strip():
-        return jsonify({"answer": "Нямам информация по този въпрос в наличните учебни материали."})
+        return jsonify({"answer": "Нямам информация по този въпрос в наличните учебни материали.", "image_url": None})
 
     chat_url = f"{openai_endpoint}openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
     chat_res = req.post(chat_url,
@@ -268,9 +267,7 @@ def qa():
         }
     )
     answer = chat_res.json()["choices"][0]["message"]["content"]
-    
-    # Image search
-    
+
     image_url = None
     try:
         serp_key = os.environ.get("SERP_KEY", "")
@@ -289,7 +286,9 @@ def qa():
                 image_url = images[0].get("original")
     except Exception as e:
         app.logger.error(f"SerpApi error: {e}")
-    
+
+    return jsonify({"answer": answer, "image_url": image_url})
+
 # ─── СТАТИСТИКА ───────────────────────────────────────────────────────────────
 
 @app.route("/stats", methods=["GET"])
