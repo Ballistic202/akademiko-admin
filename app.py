@@ -268,7 +268,9 @@ def qa():
         }
     )
     answer = chat_res.json()["choices"][0]["message"]["content"]
+    
     # Image search
+    
     image_url = None
     try:
         serp_key = os.environ.get("SERP_KEY", "")
@@ -287,7 +289,6 @@ def qa():
                 image_url = images[0].get("original")
     except Exception as e:
         app.logger.error(f"SerpApi error: {e}")
-        pass
     
 # ─── СТАТИСТИКА ───────────────────────────────────────────────────────────────
 
