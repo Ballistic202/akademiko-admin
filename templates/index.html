@@ -21,7 +21,9 @@ body{font-family:system-ui,sans-serif;background:#f5f5f5;color:#1a1a1a}
 label{font-size:12px;color:#666;display:block;margin-bottom:4px}
 select,input[type=text]{width:100%;padding:8px 10px;font-size:14px;border:1px solid #d5d5d5;border-radius:6px;background:#fff;color:#1a1a1a;outline:none}
 select:focus,input:focus{border-color:#2563eb}
+select:disabled{background:#f5f5f5;color:#999;cursor:not-allowed}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.field-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
 .upload-zone{border:2px dashed #d5d5d5;border-radius:10px;padding:2rem;text-align:center;cursor:pointer;margin-bottom:1rem;transition:background .2s}
 .upload-zone:hover{background:#f0f7ff;border-color:#2563eb}
 .upload-title{font-size:14px;color:#444;margin-bottom:4px}
@@ -111,26 +113,15 @@ textarea:focus{border-color:#2563eb}
       <div id="phase1">
         <div class="card">
           <div class="section-title">Метаданни</div>
-          <div class="field-row">
-            <div><label>Предмет</label>
-              <select id="subject">
-                <option>Човекът и природата</option>
-                <option>Математика</option>
-                <option>Български език и литература</option>
-                <option>История и цивилизации</option>
-                <option>Географии и икономика</option>
-                <option>Биология</option>
-                <option>Физика</option>
-                <option>Химия</option>
-                <option>Технологии и предприемачество</option>
-              </select>
-            </div>
-            <div><label>Клас</label>
-              <select id="grade">
+          <div class="field-row-3">
+            <div>
+              <label>Клас</label>
+              <select id="grade" onchange="onGradeChange()">
+                <option value="">— изберете клас —</option>
                 <option value="1">1. клас</option>
                 <option value="2">2. клас</option>
                 <option value="3">3. клас</option>
-                <option value="4" selected>4. клас</option>
+                <option value="4">4. клас</option>
                 <option value="5">5. клас</option>
                 <option value="6">6. клас</option>
                 <option value="7">7. клас</option>
@@ -141,10 +132,17 @@ textarea:focus{border-color:#2563eb}
                 <option value="12">12. клас</option>
               </select>
             </div>
-          </div>
-          <div class="field-row">
-            <div><label>Глава / тема (по избор)</label>
-              <input type="text" id="chapter" placeholder="напр. Жизнени процеси">
+            <div>
+              <label>Предмет</label>
+              <select id="subject" onchange="onSubjectChange()" disabled>
+                <option value="">— първо изберете клас —</option>
+              </select>
+            </div>
+            <div>
+              <label>Раздел</label>
+              <select id="section" disabled>
+                <option value="">— първо изберете предмет —</option>
+              </select>
             </div>
           </div>
         </div>
@@ -241,27 +239,28 @@ textarea:focus{border-color:#2563eb}
       <div class="page-title">Тестване на Q&A</div>
       <div class="card">
         <div class="field-row">
-          <div><label>Предмет</label>
-            <select id="qa-subject">
-              <option value="">Всички предмети</option>
-              <option>Човекът и природата</option>
-              <option>Математика</option>
-              <option>Български език и литература</option>
-              <option>История и цивилизации</option>
-              <option>Географии и икономика</option>
-              <option>Биология</option>
-              <option>Физика</option>
-              <option>Химия</option>
-              <option>Технологии и предприемачество</option>
-            </select>
-          </div>
-          <div><label>Клас</label>
-            <select id="qa-grade">
+          <div>
+            <label>Клас</label>
+            <select id="qa-grade" onchange="onQaGradeChange()">
               <option value="">Всички класове</option>
+              <option value="1">1. клас</option>
+              <option value="2">2. клас</option>
+              <option value="3">3. клас</option>
               <option value="4">4. клас</option>
               <option value="5">5. клас</option>
               <option value="6">6. клас</option>
               <option value="7">7. клас</option>
+              <option value="8">8. клас</option>
+              <option value="9">9. клас</option>
+              <option value="10">10. клас</option>
+              <option value="11">11. клас</option>
+              <option value="12">12. клас</option>
+            </select>
+          </div>
+          <div>
+            <label>Предмет</label>
+            <select id="qa-subject">
+              <option value="">Всички предмети</option>
             </select>
           </div>
         </div>
@@ -297,6 +296,82 @@ let selectedFiles = [];
 let sessionId = '';
 let ocrText = '';
 let currentChunkFile = '';
+let curriculum = {};
+
+// Зарежда учебната програма при старт
+async function loadCurriculum() {
+  try {
+    const res = await fetch('/curriculum');
+    curriculum = await res.json();
+  } catch(e) {
+    console.error('Грешка при зареждане на учебната програма:', e);
+  }
+}
+
+// ─── ЙЕРАРХИЧНИ МЕНЮТА (OCR страница) ────────────────────────────────────────
+
+function onGradeChange() {
+  const grade = document.getElementById('grade').value;
+  const subjectSel = document.getElementById('subject');
+  const sectionSel = document.getElementById('section');
+
+  subjectSel.innerHTML = '<option value="">— изберете предмет —</option>';
+  sectionSel.innerHTML = '<option value="">— първо изберете предмет —</option>';
+  subjectSel.disabled = true;
+  sectionSel.disabled = true;
+
+  if (!grade || !curriculum[grade]) return;
+
+  const subjects = Object.keys(curriculum[grade]).sort();
+  subjects.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    subjectSel.appendChild(opt);
+  });
+  subjectSel.disabled = false;
+}
+
+function onSubjectChange() {
+  const grade = document.getElementById('grade').value;
+  const subject = document.getElementById('subject').value;
+  const sectionSel = document.getElementById('section');
+
+  sectionSel.innerHTML = '<option value="">— изберете раздел —</option>';
+  sectionSel.disabled = true;
+
+  if (!grade || !subject || !curriculum[grade] || !curriculum[grade][subject]) return;
+
+  const sections = curriculum[grade][subject].sections || [];
+  sections.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.name;
+    opt.textContent = s.name;
+    sectionSel.appendChild(opt);
+  });
+  sectionSel.disabled = false;
+}
+
+// ─── ЙЕРАРХИЧНИ МЕНЮТА (Q&A страница) ────────────────────────────────────────
+
+function onQaGradeChange() {
+  const grade = document.getElementById('qa-grade').value;
+  const subjectSel = document.getElementById('qa-subject');
+
+  subjectSel.innerHTML = '<option value="">Всички предмети</option>';
+
+  if (!grade || !curriculum[grade]) return;
+
+  const subjects = Object.keys(curriculum[grade]).sort();
+  subjects.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    subjectSel.appendChild(opt);
+  });
+}
+
+// ─── НАВИГАЦИЯ ────────────────────────────────────────────────────────────────
 
 function show(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -317,6 +392,8 @@ function setStep(n) {
   }
 }
 
+// ─── ФАЙЛОВЕ ──────────────────────────────────────────────────────────────────
+
 function filesSelected(files) {
   selectedFiles = Array.from(files);
   const list = document.getElementById('file-list');
@@ -330,8 +407,19 @@ dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.background='
 dz.addEventListener('dragleave', () => { dz.style.background=''; });
 dz.addEventListener('drop', e => { e.preventDefault(); dz.style.background=''; filesSelected(e.dataTransfer.files); });
 
+// ─── OCR ──────────────────────────────────────────────────────────────────────
+
 async function startOCR() {
   if(!selectedFiles.length) { alert('Моля изберете файлове.'); return; }
+
+  const grade = document.getElementById('grade').value;
+  const subject = document.getElementById('subject').value;
+  const section = document.getElementById('section').value;
+
+  if(!grade || !subject || !section) {
+    alert('Моля изберете клас, предмет и раздел.');
+    return;
+  }
 
   sessionId = Date.now().toString();
   const btn = document.getElementById('btn-ocr');
@@ -340,9 +428,9 @@ async function startOCR() {
 
   const formData = new FormData();
   selectedFiles.forEach(f => formData.append('files', f));
-  formData.append('subject', document.getElementById('subject').value);
-  formData.append('grade', document.getElementById('grade').value);
-  formData.append('chapter', document.getElementById('chapter').value);
+  formData.append('grade', grade);
+  formData.append('subject', subject);
+  formData.append('section', section);
   formData.append('session_id', sessionId);
 
   try {
@@ -392,21 +480,12 @@ function uploadEditedTxt(input) {
   reader.readAsText(file, 'UTF-8');
 }
 
-async function confirmOCR() {
-  ocrText = document.getElementById('ocr-textarea').value;
-  if(!ocrText.trim()) { alert('Текстът е празен.'); return; }
-
-  const res = await fetch(`/ocr-confirmed/${sessionId}.txt`, {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({text: ocrText})
-  });
-  const data = await res.json();
-  if(data.status === 'ok') {
-    document.getElementById('phase2').style.display = 'none';
-    document.getElementById('phase3').style.display = 'block';
-    setStep(2);
-  }
+function confirmOCR() {
+  ocrText = document.getElementById('ocr-textarea').value.trim();
+  if(!ocrText) { alert('Текстът е празен.'); return; }
+  document.getElementById('phase2').style.display = 'none';
+  document.getElementById('phase3').style.display = 'block';
+  setStep(2);
 }
 
 function backToOCR() {
@@ -421,11 +500,12 @@ function backToChunking() {
   setStep(2);
 }
 
+// ─── CHUNKING ─────────────────────────────────────────────────────────────────
+
 async function startChunking() {
   const btn = document.getElementById('btn-chunk');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> AI анализира...';
-  document.getElementById('chunking-alert').innerHTML = '<div class="alert alert-info">AI разбива текста на chunk-ове. Това може да отнеме 20-40 секунди...</div>';
 
   try {
     const res = await fetch('/chunk-ai', {
@@ -433,9 +513,9 @@ async function startChunking() {
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         text: ocrText,
-        subject: document.getElementById('subject').value,
         grade: document.getElementById('grade').value,
-        chapter: document.getElementById('chapter').value,
+        subject: document.getElementById('subject').value,
+        section: document.getElementById('section').value,
         session_id: sessionId
       })
     });
@@ -509,12 +589,19 @@ function resetUpload() {
   document.getElementById('ocr-textarea').value = '';
   document.getElementById('json-editor').value = '';
   document.getElementById('file-input').value = '';
+  document.getElementById('grade').value = '';
+  document.getElementById('subject').innerHTML = '<option value="">— първо изберете клас —</option>';
+  document.getElementById('subject').disabled = true;
+  document.getElementById('section').innerHTML = '<option value="">— първо изберете предмет —</option>';
+  document.getElementById('section').disabled = true;
   document.getElementById('phase1').style.display = 'block';
   document.getElementById('phase2').style.display = 'none';
   document.getElementById('phase3').style.display = 'none';
   document.getElementById('phase4').style.display = 'none';
   setStep(1);
 }
+
+// ─── ПРЕГЛЕД ──────────────────────────────────────────────────────────────────
 
 async function loadPending() {
   const res = await fetch('/pending');
@@ -540,7 +627,7 @@ async function loadPending() {
         </div>
         ${chunks.slice(0,3).map(c => `
           <div class="chunk-preview">
-            <div class="chunk-preview-id">${c.chunk_id || '—'} · ${c.subject || ''} ${c.grade ? c.grade+'. клас' : ''}</div>
+            <div class="chunk-preview-id">${c.chunk_id || '—'} · ${c.subject || ''} ${c.grade ? c.grade+'. клас' : ''} ${c.section ? '· '+c.section : ''}</div>
             <div class="chunk-preview-text">${(c.text_content || '').substring(0,200)}${(c.text_content||'').length > 200 ? '...' : ''}</div>
           </div>`).join('')}
         ${chunks.length > 3 ? `<div style="font-size:12px;color:#999;margin:6px 0">... и още ${chunks.length-3} chunk-а</div>` : ''}
@@ -582,6 +669,8 @@ async function rejectAll() {
   loadPending();
 }
 
+// ─── Q&A ──────────────────────────────────────────────────────────────────────
+
 async function sendQuestion() {
   const input = document.getElementById('qa-input');
   const q = input.value.trim();
@@ -611,17 +700,19 @@ async function sendQuestion() {
     const bubble = aiDiv.querySelector('.bubble-ai');
     bubble.textContent = data.answer || 'Няма отговор.';
     if(data.image_url) {
-        const img = document.createElement('img');
-        img.src = data.image_url;
-        img.style.cssText = 'max-width:100%;border-radius:6px;margin-top:10px;display:block';
-        img.onerror = () => img.remove();
-        bubble.appendChild(img);
+      const img = document.createElement('img');
+      img.src = data.image_url;
+      img.style.cssText = 'max-width:100%;border-radius:6px;margin-top:10px;display:block';
+      img.onerror = () => img.remove();
+      bubble.appendChild(img);
     }
   } catch(e) {
     aiDiv.querySelector('.bubble-ai').textContent = 'Грешка при свързване.';
   }
   box.scrollTop = box.scrollHeight;
 }
+
+// ─── СТАТИСТИКА ───────────────────────────────────────────────────────────────
 
 async function loadStats() {
   try {
@@ -636,6 +727,10 @@ async function loadStats() {
       : 'Няма данни';
   } catch(e) {}
 }
+
+// ─── ИНИЦИАЛИЗАЦИЯ ────────────────────────────────────────────────────────────
+
+loadCurriculum();
 </script>
 </body>
 </html>
