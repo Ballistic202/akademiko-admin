@@ -11,7 +11,6 @@ blob_client = BlobServiceClient.from_connection_string(
     os.environ["STORAGE_CONN"]
 )
 
-# Зарежда учебната програма веднъж при старт
 def load_curriculum():
     try:
         path = os.path.join(os.path.dirname(__file__), "curriculum_complete.json")
@@ -145,18 +144,41 @@ def save_ocr_text(filename):
 
 # ─── СТЪПКА 2: AI CHUNKING ────────────────────────────────────────────────────
 
+def get_program_text(grade, subject, section):
+    """Извлича program_text за избрания раздел от учебната програма"""
+    try:
+        grade_data = CURRICULUM.get(str(grade), {})
+        subject_data = grade_data.get(subject, {})
+        sections = subject_data.get("sections", [])
+        for sec in sections:
+            if sec.get("name") == section:
+                return sec.get("program_text", "")
+    except Exception:
+        pass
+    return ""
+
 @app.route("/chunk-ai", methods=["POST"])
 def chunk_ai():
     data = request.json
     text = data.get("text", "")
     subject = data.get("subject", "")
     grade = data.get("grade", "")
-    publisher = data.get("publisher", "")
     section = data.get("section", "")
     session_id = data.get("session_id", "")
 
     openai_endpoint = os.environ["OPENAI_ENDPOINT"]
     openai_key = os.environ["OPENAI_KEY"]
+
+    program_text = get_program_text(grade, subject, section)
+
+    program_context = ""
+    if program_text:
+        program_context = f"""
+Учебна програма на МОН за този раздел (съдържа цели и ключови понятия):
+---
+{program_text}
+---
+"""
 
     system_prompt = """Ти си експерт по образователно съдържание. Анализирай предоставения учебен текст и го раздели на смислени chunk-ове подходящи за RAG система.
 
@@ -167,7 +189,9 @@ def chunk_ai():
 - section: раздел от учебната програма
 - content_type: тип съдържание (main_text, glossary, questions, exercise, table, example)
 - text_content: самият текст на chunk-а
-- key_concepts: масив с ключови понятия от chunk-а (извлечени от текста)
+- key_concepts: масив с ключови понятия извлечени от текста на chunk-а
+- goals: масив с цели от учебната програма на МОН, на които отговаря този chunk (използвай предоставената програма)
+- key_concepts_mon: масив с ключови понятия от учебната програма на МОН, свързани с този chunk (използвай предоставената програма)
 
 Правила за chunk-ване:
 - Всеки chunk трябва да е семантично завършен и самостоятелен
@@ -183,7 +207,7 @@ def chunk_ai():
     user_prompt = f"""Предмет: {subject}
 Клас: {grade}
 Раздел: {section}
-
+{program_context}
 Текст за chunk-ване:
 {text}"""
 
