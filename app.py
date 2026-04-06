@@ -145,7 +145,6 @@ def save_ocr_text(filename):
 # ─── СТЪПКА 2: AI CHUNKING ────────────────────────────────────────────────────
 
 def get_program_text(grade, subject, section):
-    """Извлича program_text за избрания раздел от учебната програма"""
     try:
         grade_data = CURRICULUM.get(str(grade), {})
         subject_data = grade_data.get(subject, {})
@@ -176,7 +175,7 @@ def chunk_ai():
         program_context = f"""
 Учебна програма на МОН за този раздел (съдържа цели и ключови понятия):
 ---
-{program_text}
+{program_text[:1500]}
 ---
 """
 
@@ -188,47 +187,62 @@ def chunk_ai():
 - grade: клас като число
 - section: раздел от учебната програма
 - content_type: тип съдържание (main_text, glossary, questions, exercise, table, example)
-- text_content: самият текст на chunk-а
-- key_concepts: масив с ключови понятия извлечени от текста на chunk-а
-- goals: масив с цели от учебната програма на МОН, на които отговаря този chunk (използвай предоставената програма)
-- key_concepts_mon: масив с ключови понятия от учебната програма на МОН, свързани с този chunk (използвай предоставената програма)
+- text_content: самият текст на chunk-а (макс 800 символа)
+- key_concepts: масив с ключови понятия от текста
+- goals: масив с цели от МОН програмата за този chunk
+- key_concepts_mon: масив с ключови понятия от МОН програмата за този chunk
 
-Правила за chunk-ване:
-- Всеки chunk трябва да е семантично завършен и самостоятелен
-- Минимална дължина: 50 символа
-- Максимална дължина: 800 символа
-- Не разделяй изречения в средата
-- Групирай свързани изречения заедно
-- Речникови дефиниции да са отделни chunk-ове
-- Въпроси и задачи да са отделни chunk-ове
+Правила:
+- Семантично завършен и самостоятелен chunk
+- Минимум 50, максимум 800 символа
+- Не разделяй изречения
+- Речникови дефиниции → отделен chunk
+- Въпроси и задачи → отделен chunk
 
 Върни САМО валиден JSON масив без никакъв друг текст."""
+
+    # Ограничи входния текст за да не препълваме context window
+    text_limit = 12000
+    text_truncated = text[:text_limit] if len(text) > text_limit else text
+    if len(text) > text_limit:
+        app.logger.warning(f"Text truncated from {len(text)} to {text_limit} chars")
 
     user_prompt = f"""Предмет: {subject}
 Клас: {grade}
 Раздел: {section}
 {program_context}
 Текст за chunk-ване:
-{text}"""
+{text_truncated}"""
 
     chat_url = f"{openai_endpoint}openai/deployments/gpt-4.1/chat/completions?api-version=2024-02-01"
-    chat_res = req.post(chat_url,
-        headers={"api-key": openai_key, "Content-Type": "application/json"},
-        json={
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            "max_tokens": 9000,
-            "temperature": 0.1
-        }
-    )
-    raw = chat_res.json()["choices"][0]["message"]["content"].strip()
-    raw = raw.replace("```json", "").replace("```", "").strip()
+
+    app.logger.error(f"CHUNK-AI request: grade={grade}, subject={subject}, section={section}, text_len={len(text)}, prompt_len={len(user_prompt)}")
 
     try:
+        chat_res = req.post(chat_url,
+            headers={"api-key": openai_key, "Content-Type": "application/json"},
+            json={
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                "max_tokens": 9000,
+                "temperature": 0.1
+            },
+            timeout=120
+        )
+        app.logger.error(f"GPT status: {chat_res.status_code}")
+        app.logger.error(f"GPT raw: {chat_res.text[:500]}")
+    except Exception as e:
+        app.logger.error(f"GPT request failed: {e}")
+        return jsonify({"status": "error", "message": str(e), "chunks": [], "filename": ""}), 500
+
+    try:
+        raw = chat_res.json()["choices"][0]["message"]["content"].strip()
+        raw = raw.replace("```json", "").replace("```", "").strip()
         chunks = json.loads(raw)
-    except Exception:
+    except Exception as e:
+        app.logger.error(f"Parse error: {e} | raw: {chat_res.text[:300]}")
         chunks = []
 
     output_name = f"{session_id}_chunks.json"
