@@ -11,9 +11,25 @@ blob_client = BlobServiceClient.from_connection_string(
     os.environ["STORAGE_CONN"]
 )
 
+# Зарежда учебната програма веднъж при старт
+def load_curriculum():
+    try:
+        path = os.path.join(os.path.dirname(__file__), "curriculum_complete.json")
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        app.logger.error(f"Could not load curriculum: {e}")
+        return {}
+
+CURRICULUM = load_curriculum()
+
 @app.route("/")
 def home():
     return render_template("index.html")
+
+@app.route("/curriculum", methods=["GET"])
+def get_curriculum():
+    return jsonify(CURRICULUM)
 
 # ─── PENDING / APPROVE / REJECT ───────────────────────────────────────────────
 
@@ -51,7 +67,7 @@ def ocr_batch():
     subject = request.form.get("subject", "")
     grade = request.form.get("grade", "")
     publisher = request.form.get("publisher", "")
-    chapter = request.form.get("chapter", "")
+    section = request.form.get("section", "")
     session_id = request.form.get("session_id", "")
 
     if not files:
@@ -108,7 +124,7 @@ def ocr_batch():
         "subject": subject,
         "grade": grade,
         "publisher": publisher,
-        "chapter": chapter
+        "section": section
     })
 
 
@@ -136,7 +152,7 @@ def chunk_ai():
     subject = data.get("subject", "")
     grade = data.get("grade", "")
     publisher = data.get("publisher", "")
-    chapter = data.get("chapter", "")
+    section = data.get("section", "")
     session_id = data.get("session_id", "")
 
     openai_endpoint = os.environ["OPENAI_ENDPOINT"]
@@ -146,13 +162,12 @@ def chunk_ai():
 
 За всеки chunk създай JSON обект със следните полета:
 - chunk_id: уникален идентификатор (напр. "предмет-клас-номер")
-- subject: предмет (определи от контекста или използвай предоставения)
-- grade: клас като число (определи от контекста или използвай предоставения)
-- chapter: глава или тема
+- subject: предмет
+- grade: клас като число
+- section: раздел от учебната програма
 - content_type: тип съдържание (main_text, glossary, questions, exercise, table, example)
-- section: заглавие на секцията
 - text_content: самият текст на chunk-а
-- key_concepts: масив с ключови понятия от chunk-а
+- key_concepts: масив с ключови понятия от chunk-а (извлечени от текста)
 
 Правила за chunk-ване:
 - Всеки chunk трябва да е семантично завършен и самостоятелен
@@ -167,7 +182,7 @@ def chunk_ai():
 
     user_prompt = f"""Предмет: {subject}
 Клас: {grade}
-Тема: {chapter}
+Раздел: {section}
 
 Текст за chunk-ване:
 {text}"""
