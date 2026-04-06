@@ -226,7 +226,7 @@ def chunk_ai():
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                "max_tokens": 9000,
+                "max_tokens": 16000,
                 "temperature": 0.1
             },
             timeout=120
