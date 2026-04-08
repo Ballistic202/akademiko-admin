@@ -4,6 +4,7 @@ import os
 import json
 import requests as req
 import time
+import base64
 
 app = Flask(__name__)
 
@@ -58,7 +59,81 @@ def reject(filename):
     blob.delete_blob()
     return jsonify({"status": "rejected", "file": filename})
 
+# ─── OCR HELPERS ──────────────────────────────────────────────────────────────
+
+def ocr_with_mathpix(file_bytes, filename):
+    """OCR с Mathpix — за математически учебници"""
+    app_id = os.environ.get("MATHPIX_APP_ID", "")
+    app_key = os.environ.get("MATHPIX_APP_KEY", "")
+
+    if filename.lower().endswith(".png"):
+        mime_type = "image/png"
+    elif filename.lower().endswith(".jpg") or filename.lower().endswith(".jpeg"):
+        mime_type = "image/jpeg"
+    else:
+        mime_type = "image/png"
+
+    image_b64 = base64.b64encode(file_bytes).decode("utf-8")
+
+    res = req.post(
+        "https://api.mathpix.com/v3/text",
+        headers={
+            "app_id": app_id,
+            "app_key": app_key,
+            "Content-Type": "application/json"
+        },
+        json={
+            "src": f"data:{mime_type};base64,{image_b64}",
+            "formats": ["text"],
+            "data_options": {
+                "include_latex": True
+            },
+            "options": {
+                "math_inline_delimiters": ["$", "$"],
+                "math_display_delimiters": ["$$", "$$"],
+                "rm_spaces": True
+            }
+        },
+        timeout=60
+    )
+
+    result = res.json()
+    if "text" in result:
+        return result["text"]
+    else:
+        app.logger.error(f"Mathpix error: {result}")
+        return ""
+
+def ocr_with_doc_intelligence(file_bytes, filename, endpoint, key):
+    """OCR с Azure Document Intelligence — за всички останали предмети"""
+    if filename.lower().endswith(".png"):
+        content_type = "image/png"
+    elif filename.lower().endswith(".jpg") or filename.lower().endswith(".jpeg"):
+        content_type = "image/jpeg"
+    else:
+        content_type = "application/pdf"
+
+    url = f"{endpoint}documentintelligence/documentModels/prebuilt-read:analyze?api-version=2024-11-30&locale=bg"
+    headers = {"Ocp-Apim-Subscription-Key": key, "Content-Type": content_type}
+    response = req.post(url, headers=headers, data=file_bytes)
+
+    if "Operation-Location" not in response.headers:
+        return ""
+
+    operation_url = response.headers["Operation-Location"]
+    while True:
+        result = req.get(operation_url, headers={"Ocp-Apim-Subscription-Key": key}).json()
+        if result["status"] == "succeeded":
+            break
+        if result["status"] == "failed":
+            return ""
+        time.sleep(2)
+
+    return result.get("analyzeResult", {}).get("content", "")
+
 # ─── СТЪПКА 1: OCR ────────────────────────────────────────────────────────────
+
+MATH_SUBJECTS = ["Математика"]
 
 @app.route("/ocr-batch", methods=["POST"])
 def ocr_batch():
@@ -74,6 +149,10 @@ def ocr_batch():
 
     endpoint = os.environ["DOC_ENDPOINT"]
     key = os.environ["DOC_KEY"]
+
+    use_mathpix = subject in MATH_SUBJECTS
+    app.logger.error(f"OCR mode: {'Mathpix' if use_mathpix else 'Doc Intelligence'} for subject: {subject}")
+
     all_text = []
 
     for file in files:
@@ -83,31 +162,12 @@ def ocr_batch():
         upload_blob = blob_client.get_blob_client("textbooks-raw", filename)
         upload_blob.upload_blob(file_bytes, overwrite=True)
 
-        if filename.lower().endswith(".png"):
-            content_type = "image/png"
-        elif filename.lower().endswith(".jpg") or filename.lower().endswith(".jpeg"):
-            content_type = "image/jpeg"
+        if use_mathpix:
+            page_text = ocr_with_mathpix(file_bytes, filename)
         else:
-            content_type = "application/pdf"
+            page_text = ocr_with_doc_intelligence(file_bytes, filename, endpoint, key)
 
-        url = f"{endpoint}documentintelligence/documentModels/prebuilt-read:analyze?api-version=2024-11-30&locale=bg"
-        headers = {"Ocp-Apim-Subscription-Key": key, "Content-Type": content_type}
-        response = req.post(url, headers=headers, data=file_bytes)
-
-        if "Operation-Location" not in response.headers:
-            continue
-
-        operation_url = response.headers["Operation-Location"]
-        while True:
-            result = req.get(operation_url, headers={"Ocp-Apim-Subscription-Key": key}).json()
-            if result["status"] == "succeeded":
-                break
-            if result["status"] == "failed":
-                break
-            time.sleep(2)
-
-        if result["status"] == "succeeded":
-            page_text = result.get("analyzeResult", {}).get("content", "")
+        if page_text:
             all_text.append(f"=== {filename} ===\n{page_text}")
 
     combined_text = "\n\n".join(all_text)
@@ -179,7 +239,36 @@ def chunk_ai():
 ---
 """
 
-    system_prompt = """Ти си експерт по образователно съдържание. Анализирай предоставения учебен текст и го раздели на смислени chunk-ове подходящи за RAG система.
+    is_math = subject in MATH_SUBJECTS
+
+    if is_math:
+        system_prompt = """Ти си експерт по образователно съдържание. Анализирай предоставения математически учебен текст и го раздели на смислени chunk-ове подходящи за RAG система.
+
+Текстът съдържа LaTeX формули вградени като $формула$ (inline) и $$формула$$ (display). Запази ги непроменени в text_content.
+
+За всеки chunk създай JSON обект със следните полета:
+- chunk_id: уникален идентификатор (напр. "mat-5-001")
+- subject: предмет
+- grade: клас като число
+- section: раздел от учебната програма
+- content_type: тип съдържание — използвай "main_text" за теория с формули, "definition" за дефиниции, "theorem" за теореми и правила, "example" за примери с решения, "exercise" за задачи без теоретично обяснение
+- text_content: самият текст на chunk-а с LaTeX формулите (макс 800 символа)
+- key_concepts: масив с ключови математически понятия от chunk-а
+- goals: масив с цели от МОН програмата за този chunk
+- key_concepts_mon: масив с ключови понятия от МОН програмата за този chunk
+
+Правила:
+- Семантично завършен и самостоятелен chunk
+- Минимум 50, максимум 800 символа
+- Не разделяй формули в средата
+- Дефиниции и теореми → отделни chunk-ове с content_type "definition" или "theorem"
+- Примери с решения → content_type "example"
+- Чисти задачи без теория → content_type "exercise"
+- Запази LaTeX формулите точно както са
+
+Върни САМО валиден JSON масив без никакъв друг текст."""
+    else:
+        system_prompt = """Ти си експерт по образователно съдържание. Анализирай предоставения учебен текст и го раздели на смислени chunk-ове подходящи за RAG система.
 
 За всеки chunk създай JSON обект със следните полета:
 - chunk_id: уникален идентификатор (напр. "предмет-клас-номер")
