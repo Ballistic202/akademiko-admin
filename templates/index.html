@@ -718,13 +718,6 @@ async function sendQuestion() {
       });
     }
 
-    if(data.image_url) {
-      const img = document.createElement('img');
-      img.src = data.image_url;
-      img.style.cssText = 'max-width:100%;border-radius:6px;margin-top:10px;display:block';
-      img.onerror = () => img.remove();
-      bubble.appendChild(img);
-    }
 
     if(data.references && data.references.length > 0) {
       const refDiv = document.createElement('div');
