@@ -749,8 +749,8 @@ async function sendQuestion() {
         const section = ref.section || '';
         const label = [subject, grade, section].filter(Boolean).join(' · ');
 
-        const blobUrl = ref.blob_url || '';
-        const filename = blobUrl ? decodeURIComponent(blobUrl.split('/').pop()) : '';
+        const filename = ref.filename || '';
+        const downloadUrl = filename ? `/download-chunk/${encodeURIComponent(filename)}` : '';
 
         const item = document.createElement('div');
         item.style.cssText = 'background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:12px;';
@@ -760,7 +760,7 @@ async function sendQuestion() {
           <div class="ref-text" style="color:#444;line-height:1.5;max-height:60px;overflow:hidden;transition:max-height 0.3s;">${ref.text}</div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
             <span class="ref-toggle" style="font-size:11px;color:#999;cursor:pointer;">Покажи повече ▾</span>
-            ${filename ? `<a href="${blobUrl}" download="${filename}" style="font-size:11px;color:#2563eb;text-decoration:none;" title="Свали JSON файла">⬇ ${filename.substring(0,25)}${filename.length>25?'...':''}</a>` : ''}
+            ${downloadUrl ? `<a href="${downloadUrl}" style="font-size:11px;color:#2563eb;text-decoration:none;" title="Свали JSON файла">⬇ ${filename.substring(0,25)}${filename.length>25?'...':''}</a>` : ''}
           </div>
         `;
 
