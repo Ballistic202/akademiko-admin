@@ -750,7 +750,8 @@ async function sendQuestion() {
         const label = [subject, grade, section].filter(Boolean).join(' · ');
 
         const filename = ref.filename || '';
-        const downloadUrl = filename ? `/download-chunk/${encodeURIComponent(filename)}` : '';
+        const isChunkFile = filename.endsWith('_chunks.json');
+        const downloadUrl = isChunkFile ? `/download-chunk/${encodeURIComponent(filename)}` : '';
 
         const item = document.createElement('div');
         item.style.cssText = 'background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:12px;';
