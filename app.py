@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, Response
 from azure.storage.blob import BlobServiceClient
 import os
 import json
@@ -30,6 +30,22 @@ def home():
 @app.route("/curriculum", methods=["GET"])
 def get_curriculum():
     return jsonify(CURRICULUM)
+
+# ─── DOWNLOAD CHUNK ───────────────────────────────────────────────────────────
+
+@app.route("/download-chunk/<filename>", methods=["GET"])
+def download_chunk(filename):
+    try:
+        blob = blob_client.get_blob_client("chunks-approved", filename)
+        content = blob.download_blob().readall()
+        return Response(
+            response=content,
+            status=200,
+            mimetype='application/json',
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 404
 
 # ─── PENDING / APPROVE / REJECT ───────────────────────────────────────────────
 
@@ -428,12 +444,14 @@ def qa():
     for r in results:
         text = r.get("text_content") or r.get("snippet") or ""
         if text:
+            blob_url = r.get("blob_url", "")
+            filename = blob_url.split("/").pop() if blob_url else ""
             references.append({
                 "text": text,
                 "section": r.get("section", ""),
                 "subject": r.get("subject", ""),
                 "grade": r.get("grade", ""),
-                "blob_url": r.get("blob_url", "")
+                "filename": filename
             })
 
     return jsonify({"answer": answer, "image_url": None, "references": references})
