@@ -5,6 +5,7 @@ import json
 import requests as req
 import time
 import base64
+from urllib.parse import unquote
 
 app = Flask(__name__)
 
@@ -36,7 +37,6 @@ def get_curriculum():
 @app.route("/download-chunk/<path:filename>", methods=["GET"])
 def download_chunk(filename):
     try:
-        from urllib.parse import unquote
         filename = unquote(filename)
         blob = blob_client.get_blob_client("chunks-approved", filename)
         content = blob.download_blob().readall()
@@ -399,6 +399,18 @@ def qa():
     )
     vector = embed_res.json()["data"][0]["embedding"]
 
+    # Изгради филтър по клас и предмет
+    filters = []
+    if grade:
+        try:
+            filters.append(f"grade eq {int(grade)}")
+        except Exception:
+            pass
+    if subject:
+        safe_subject = subject.replace("'", "''")
+        filters.append(f"subject eq '{safe_subject}'")
+    filter_str = " and ".join(filters) if filters else None
+
     search_url = f"{search_endpoint}indexes/akademiko-knowledge-source-index/docs/search?api-version=2024-07-01"
     search_body = {
         "search": question,
@@ -406,25 +418,24 @@ def qa():
         "select": "text_content,snippet,blob_url,section,subject,grade",
         "top": 5
     }
+    if filter_str:
+        search_body["filter"] = filter_str
+
     search_res = req.post(search_url,
         headers={"api-key": search_key, "Content-Type": "application/json"},
         json=search_body
     )
 
     search_response_json = search_res.json()
-    app.logger.error(f"Search response: {str(search_response_json)[:300]}")
+    app.logger.error(f"Search filter: {filter_str}")
+    app.logger.error(f"Search results count: {len(search_response_json.get('value', []))}")
     results = search_response_json.get("value", [])
-    app.logger.error(f"Search results count: {len(results)}")
-    for dbg_r in results:
-        app.logger.error(f"blob_url: {dbg_r.get('blob_url', '')}")
-    
 
     context = "\n\n".join([
         r.get("text_content") or r.get("snippet") or ""
         for r in results
         if r.get("text_content") or r.get("snippet")
     ])
-    app.logger.error(f"Context: {context[:200]}")
 
     if not context.strip():
         return jsonify({
@@ -449,16 +460,17 @@ def qa():
     references = []
     for r in results:
         text = r.get("text_content") or r.get("snippet") or ""
-        if text:
-            blob_url = r.get("blob_url", "")
-            filename = blob_url.split("/").pop() if blob_url else ""
-            references.append({
-                "text": text,
-                "section": r.get("section", ""),
-                "subject": r.get("subject", ""),
-                "grade": r.get("grade", ""),
-                "filename": filename
-            })
+        if not text:
+            continue
+        blob_url = r.get("blob_url", "")
+        filename = unquote(blob_url.split("/").pop()) if blob_url else ""
+        references.append({
+            "text": text,
+            "section": r.get("section", ""),
+            "subject": r.get("subject", ""),
+            "grade": r.get("grade", ""),
+            "filename": filename
+        })
 
     return jsonify({"answer": answer, "image_url": None, "references": references})
 
