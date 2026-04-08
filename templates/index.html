@@ -708,7 +708,7 @@ async function sendQuestion() {
     const data = await res.json();
     const bubble = aiDiv.querySelector('.bubble-ai');
 
-    bubble.textContent = data.answer || 'Няма отговор.';
+    bubble.innerHTML = (data.answer || 'Няма отговор.').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     if(window.renderMathInElement) {
       renderMathInElement(bubble, {
         delimiters: [
