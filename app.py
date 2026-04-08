@@ -297,18 +297,25 @@ def qa():
     search_body = {
         "search": question,
         "vectorQueries": [{"kind": "vector", "vector": vector, "fields": "snippet_vector", "k": 10}],
-        "select": "text_content,blob_url,section,subject,grade",
+        "select": "text_content,snippet,blob_url,section,subject,grade",
         "top": 5
     }
     search_res = req.post(search_url,
         headers={"api-key": search_key, "Content-Type": "application/json"},
         json=search_body
     )
-    results = search_res.json().get("value", [])
+
+    search_response_json = search_res.json()
+    app.logger.error(f"Search response: {str(search_response_json)[:300]}")
+    results = search_response_json.get("value", [])
     app.logger.error(f"Search results count: {len(results)}")
-    app.logger.error(f"First result: {results[0] if results else 'EMPTY'}")
+
+    context = "\n\n".join([
+        r.get("text_content") or r.get("snippet") or ""
+        for r in results
+        if r.get("text_content") or r.get("snippet")
+    ])
     app.logger.error(f"Context: {context[:200]}")
-    context = "\n\n".join([r.get("text_content") or r.get("snippet") or "" for r in results if r.get("text_content") or r.get("snippet")])
 
     if not context.strip():
         return jsonify({
@@ -330,7 +337,6 @@ def qa():
     )
     answer = chat_res.json()["choices"][0]["message"]["content"]
 
-    # Референции
     references = []
     for r in results:
         text = r.get("text_content") or r.get("snippet") or ""
