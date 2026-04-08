@@ -243,59 +243,60 @@ textarea:focus{border-color:#2563eb}
       <div id="chunks-container"></div>
     </div>
 
-<!-- Q&A -->
-<div class="page" id="page-qa">
-  <div class="page-title">Тестване на Q&A</div>
-  <div class="card">
-    <div class="field-row">
-      <div>
-        <label>Клас</label>
-        <select id="qa-grade" onchange="onQaGradeChange()">
-          <option value="">Всички класове</option>
-          <option value="1">1. клас</option>
-          <option value="2">2. клас</option>
-          <option value="3">3. клас</option>
-          <option value="4">4. клас</option>
-          <option value="5">5. клас</option>
-          <option value="6">6. клас</option>
-          <option value="7">7. клас</option>
-          <option value="8">8. клас</option>
-          <option value="9">9. клас</option>
-          <option value="10">10. клас</option>
-          <option value="11">11. клас</option>
-          <option value="12">12. клас</option>
-        </select>
-      </div>
-      <div>
-        <label>Предмет</label>
-        <select id="qa-subject">
-          <option value="">Всички предмети</option>
-        </select>
+    <!-- Q&A -->
+    <div class="page" id="page-qa">
+      <div class="page-title">Тестване на Q&A</div>
+      <div class="card">
+        <div class="field-row">
+          <div>
+            <label>Клас</label>
+            <select id="qa-grade" onchange="onQaGradeChange()">
+              <option value="">Всички класове</option>
+              <option value="1">1. клас</option>
+              <option value="2">2. клас</option>
+              <option value="3">3. клас</option>
+              <option value="4">4. клас</option>
+              <option value="5">5. клас</option>
+              <option value="6">6. клас</option>
+              <option value="7">7. клас</option>
+              <option value="8">8. клас</option>
+              <option value="9">9. клас</option>
+              <option value="10">10. клас</option>
+              <option value="11">11. клас</option>
+              <option value="12">12. клас</option>
+            </select>
+          </div>
+          <div>
+            <label>Предмет</label>
+            <select id="qa-subject">
+              <option value="">Всички предмети</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="qa-split" style="display:flex;gap:16px;align-items:flex-start;">
+
+          <!-- Ляво: чат -->
+          <div style="flex:1;min-width:0;">
+            <div class="qa-box" id="qa-messages">
+              <div style="text-align:center;color:#999;font-size:13px;padding:2rem">Задайте въпрос за да тествате системата</div>
+            </div>
+            <div class="qa-row">
+              <input type="text" id="qa-input" placeholder="Задайте въпрос..." onkeydown="if(event.key==='Enter')sendQuestion()">
+              <button class="btn btn-primary" onclick="sendQuestion()">Изпрати</button>
+            </div>
+          </div>
+
+          <!-- Дясно: източници (скрит по подразбиране) -->
+          <div id="qa-sources" style="display:none;width:320px;flex-shrink:0;">
+            <div style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;padding:0 2px;">Източници</div>
+            <div id="qa-sources-list"></div>
+          </div>
+
+        </div>
       </div>
     </div>
 
-    <div id="qa-split" style="display:flex;gap:16px;align-items:flex-start;">
-
-      <!-- Ляво: чат -->
-      <div style="flex:1;min-width:0;">
-        <div class="qa-box" id="qa-messages">
-          <div style="text-align:center;color:#999;font-size:13px;padding:2rem">Задайте въпрос за да тествате системата</div>
-        </div>
-        <div class="qa-row">
-          <input type="text" id="qa-input" placeholder="Задайте въпрос..." onkeydown="if(event.key==='Enter')sendQuestion()">
-          <button class="btn btn-primary" onclick="sendQuestion()">Изпрати</button>
-        </div>
-      </div>
-
-      <!-- Дясно: източници (скрит по подразбиране) -->
-      <div id="qa-sources" style="display:none;width:320px;flex-shrink:0;">
-        <div style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;padding:0 2px;">Източници</div>
-        <div id="qa-sources-list"></div>
-      </div>
-
-    </div>
-  </div>
-</div>
     <!-- СТАТИСТИКА -->
     <div class="page" id="page-stats">
       <div class="page-title">Статистика</div>
@@ -320,7 +321,6 @@ let ocrText = '';
 let currentChunkFile = '';
 let curriculum = {};
 
-// Зарежда учебната програма при старт
 async function loadCurriculum() {
   try {
     const res = await fetch('/curriculum');
@@ -712,7 +712,6 @@ async function sendQuestion() {
   box.appendChild(aiDiv);
   box.scrollTop = box.scrollHeight;
 
-  // Скрий стари източници
   document.getElementById('qa-sources').style.display = 'none';
   document.getElementById('qa-sources-list').innerHTML = '';
 
@@ -740,7 +739,6 @@ async function sendQuestion() {
       });
     }
 
-    // Показване на източници вдясно
     if(data.references && data.references.length > 0) {
       const sourcesList = document.getElementById('qa-sources-list');
       sourcesList.innerHTML = '';
@@ -751,7 +749,6 @@ async function sendQuestion() {
         const section = ref.section || '';
         const label = [subject, grade, section].filter(Boolean).join(' · ');
 
-        // Извлечи filename от blob_url
         const blobUrl = ref.blob_url || '';
         const filename = blobUrl ? decodeURIComponent(blobUrl.split('/').pop()) : '';
 
@@ -767,7 +764,6 @@ async function sendQuestion() {
           </div>
         `;
 
-        // Toggle за текста
         let expanded = false;
         item.querySelector('.ref-toggle').onclick = () => {
           expanded = !expanded;
@@ -785,49 +781,6 @@ async function sendQuestion() {
     aiDiv.querySelector('.bubble-ai').textContent = 'Грешка при свързване.';
   }
 
-  box.scrollTop = box.scrollHeight;
-}
-
-
-    if(data.references && data.references.length > 0) {
-      const refDiv = document.createElement('div');
-      refDiv.style.cssText = 'margin-top:12px;border-top:1px solid #e5e5e5;padding-top:10px;';
-      const refTitle = document.createElement('div');
-      refTitle.style.cssText = 'font-size:11px;font-weight:600;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;';
-      refTitle.textContent = 'Източници';
-      refDiv.appendChild(refTitle);
-      data.references.forEach((ref, idx) => {
-        const refItem = document.createElement('div');
-        refItem.style.cssText = 'background:#f9f9f9;border:1px solid #e5e5e5;border-radius:6px;padding:8px 10px;margin-bottom:6px;cursor:pointer;';
-        const refHeader = document.createElement('div');
-        refHeader.style.cssText = 'font-size:11px;color:#2563eb;font-weight:500;margin-bottom:4px;';
-        const grade = ref.grade ? `${ref.grade} клас` : '';
-        const subject = ref.subject || '';
-        const section = ref.section || '';
-        refHeader.textContent = `[${idx+1}] ${[subject, grade, section].filter(Boolean).join(' · ')}`;
-        const refText = document.createElement('div');
-        refText.style.cssText = 'font-size:12px;color:#444;line-height:1.5;max-height:60px;overflow:hidden;transition:max-height 0.3s;';
-        refText.textContent = ref.text;
-        const refToggle = document.createElement('div');
-        refToggle.style.cssText = 'font-size:11px;color:#999;margin-top:3px;';
-        refToggle.textContent = 'Покажи повече ▾';
-        let expanded = false;
-        refItem.onclick = () => {
-          expanded = !expanded;
-          refText.style.maxHeight = expanded ? '400px' : '60px';
-          refToggle.textContent = expanded ? 'Скрий ▴' : 'Покажи повече ▾';
-        };
-        refItem.appendChild(refHeader);
-        refItem.appendChild(refText);
-        refItem.appendChild(refToggle);
-        refDiv.appendChild(refItem);
-      });
-      bubble.appendChild(refDiv);
-    }
-
-  } catch(e) {
-    aiDiv.querySelector('.bubble-ai').textContent = 'Грешка при свързване.';
-  }
   box.scrollTop = box.scrollHeight;
 }
 
