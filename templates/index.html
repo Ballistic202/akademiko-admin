@@ -243,36 +243,41 @@ textarea:focus{border-color:#2563eb}
       <div id="chunks-container"></div>
     </div>
 
-    <!-- Q&A -->
-    <div class="page" id="page-qa">
-      <div class="page-title">Тестване на Q&A</div>
-      <div class="card">
-        <div class="field-row">
-          <div>
-            <label>Клас</label>
-            <select id="qa-grade" onchange="onQaGradeChange()">
-              <option value="">Всички класове</option>
-              <option value="1">1. клас</option>
-              <option value="2">2. клас</option>
-              <option value="3">3. клас</option>
-              <option value="4">4. клас</option>
-              <option value="5">5. клас</option>
-              <option value="6">6. клас</option>
-              <option value="7">7. клас</option>
-              <option value="8">8. клас</option>
-              <option value="9">9. клас</option>
-              <option value="10">10. клас</option>
-              <option value="11">11. клас</option>
-              <option value="12">12. клас</option>
-            </select>
-          </div>
-          <div>
-            <label>Предмет</label>
-            <select id="qa-subject">
-              <option value="">Всички предмети</option>
-            </select>
-          </div>
-        </div>
+<!-- Q&A -->
+<div class="page" id="page-qa">
+  <div class="page-title">Тестване на Q&A</div>
+  <div class="card">
+    <div class="field-row">
+      <div>
+        <label>Клас</label>
+        <select id="qa-grade" onchange="onQaGradeChange()">
+          <option value="">Всички класове</option>
+          <option value="1">1. клас</option>
+          <option value="2">2. клас</option>
+          <option value="3">3. клас</option>
+          <option value="4">4. клас</option>
+          <option value="5">5. клас</option>
+          <option value="6">6. клас</option>
+          <option value="7">7. клас</option>
+          <option value="8">8. клас</option>
+          <option value="9">9. клас</option>
+          <option value="10">10. клас</option>
+          <option value="11">11. клас</option>
+          <option value="12">12. клас</option>
+        </select>
+      </div>
+      <div>
+        <label>Предмет</label>
+        <select id="qa-subject">
+          <option value="">Всички предмети</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="qa-split" style="display:flex;gap:16px;align-items:flex-start;">
+
+      <!-- Ляво: чат -->
+      <div style="flex:1;min-width:0;">
         <div class="qa-box" id="qa-messages">
           <div style="text-align:center;color:#999;font-size:13px;padding:2rem">Задайте въпрос за да тествате системата</div>
         </div>
@@ -281,8 +286,16 @@ textarea:focus{border-color:#2563eb}
           <button class="btn btn-primary" onclick="sendQuestion()">Изпрати</button>
         </div>
       </div>
-    </div>
 
+      <!-- Дясно: източници (скрит по подразбиране) -->
+      <div id="qa-sources" style="display:none;width:320px;flex-shrink:0;">
+        <div style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;padding:0 2px;">Източници</div>
+        <div id="qa-sources-list"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
     <!-- СТАТИСТИКА -->
     <div class="page" id="page-stats">
       <div class="page-title">Статистика</div>
@@ -685,16 +698,24 @@ async function sendQuestion() {
   const q = input.value.trim();
   if(!q) return;
   input.value = '';
+
   const box = document.getElementById('qa-messages');
   const firstMsg = box.querySelector('div[style]');
   if(firstMsg) firstMsg.remove();
+
   box.innerHTML += `<div class="msg"><div class="msg-label">Вие</div><div class="bubble bubble-user">${q}</div></div>`;
+
   const aiDiv = document.createElement('div');
   aiDiv.className = 'msg';
   aiDiv.id = 'ai-msg-' + Date.now();
   aiDiv.innerHTML = '<div class="msg-label">Академико</div><div class="bubble bubble-ai"><span class="spinner"></span></div>';
   box.appendChild(aiDiv);
   box.scrollTop = box.scrollHeight;
+
+  // Скрий стари източници
+  document.getElementById('qa-sources').style.display = 'none';
+  document.getElementById('qa-sources-list').innerHTML = '';
+
   try {
     const res = await fetch('/qa', {
       method: 'POST',
@@ -709,6 +730,7 @@ async function sendQuestion() {
     const bubble = aiDiv.querySelector('.bubble-ai');
 
     bubble.innerHTML = (data.answer || 'Няма отговор.').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
     if(window.renderMathInElement) {
       renderMathInElement(bubble, {
         delimiters: [
@@ -717,6 +739,54 @@ async function sendQuestion() {
         ]
       });
     }
+
+    // Показване на източници вдясно
+    if(data.references && data.references.length > 0) {
+      const sourcesList = document.getElementById('qa-sources-list');
+      sourcesList.innerHTML = '';
+
+      data.references.forEach((ref, idx) => {
+        const grade = ref.grade ? `${ref.grade} клас` : '';
+        const subject = ref.subject || '';
+        const section = ref.section || '';
+        const label = [subject, grade, section].filter(Boolean).join(' · ');
+
+        // Извлечи filename от blob_url
+        const blobUrl = ref.blob_url || '';
+        const filename = blobUrl ? decodeURIComponent(blobUrl.split('/').pop()) : '';
+
+        const item = document.createElement('div');
+        item.style.cssText = 'background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:12px;';
+
+        item.innerHTML = `
+          <div style="font-size:11px;font-weight:600;color:#2563eb;margin-bottom:4px;">[${idx+1}] ${label}</div>
+          <div class="ref-text" style="color:#444;line-height:1.5;max-height:60px;overflow:hidden;transition:max-height 0.3s;">${ref.text}</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+            <span class="ref-toggle" style="font-size:11px;color:#999;cursor:pointer;">Покажи повече ▾</span>
+            ${filename ? `<a href="${blobUrl}" download="${filename}" style="font-size:11px;color:#2563eb;text-decoration:none;" title="Свали JSON файла">⬇ ${filename.substring(0,25)}${filename.length>25?'...':''}</a>` : ''}
+          </div>
+        `;
+
+        // Toggle за текста
+        let expanded = false;
+        item.querySelector('.ref-toggle').onclick = () => {
+          expanded = !expanded;
+          item.querySelector('.ref-text').style.maxHeight = expanded ? '400px' : '60px';
+          item.querySelector('.ref-toggle').textContent = expanded ? 'Скрий ▴' : 'Покажи повече ▾';
+        };
+
+        sourcesList.appendChild(item);
+      });
+
+      document.getElementById('qa-sources').style.display = 'block';
+    }
+
+  } catch(e) {
+    aiDiv.querySelector('.bubble-ai').textContent = 'Грешка при свързване.';
+  }
+
+  box.scrollTop = box.scrollHeight;
+}
 
 
     if(data.references && data.references.length > 0) {
