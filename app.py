@@ -62,7 +62,6 @@ def reject(filename):
 # ─── OCR HELPERS ──────────────────────────────────────────────────────────────
 
 def ocr_with_mathpix(file_bytes, filename):
-    """OCR с Mathpix — за математически учебници"""
     app_id = os.environ.get("MATHPIX_APP_ID", "")
     app_key = os.environ.get("MATHPIX_APP_KEY", "")
 
@@ -105,7 +104,6 @@ def ocr_with_mathpix(file_bytes, filename):
         return ""
 
 def ocr_with_doc_intelligence(file_bytes, filename, endpoint, key):
-    """OCR с Azure Document Intelligence — за всички останали предмети"""
     if filename.lower().endswith(".png"):
         content_type = "image/png"
     elif filename.lower().endswith(".jpg") or filename.lower().endswith(".jpeg"):
@@ -438,37 +436,7 @@ def qa():
                 "blob_url": r.get("blob_url", "")
             })
 
-    image_url = None
-    try:
-        serp_key = os.environ.get("SERP_KEY", "")
-        if serp_key:
-            kw_res = req.post(chat_url,
-                headers={"api-key": openai_key, "Content-Type": "application/json"},
-                json={
-                    "messages": [
-                        {"role": "system", "content": "Извлечи 2-3 ключови думи от текста подходящи за търсене на изображение. Върни САМО думите разделени с интервал, без никакъв друг текст."},
-                        {"role": "user", "content": answer}
-                    ],
-                    "max_tokens": 30
-                }
-            )
-            search_query = kw_res.json()["choices"][0]["message"]["content"].strip()
-            img_res = req.get(
-                "https://serpapi.com/search.json",
-                params={
-                    "engine": "google_images",
-                    "q": search_query,
-                    "api_key": serp_key,
-                    "num": 3
-                }
-            )
-            images = img_res.json().get("images_results", [])
-            if images:
-                image_url = images[0].get("original")
-    except Exception as e:
-        app.logger.error(f"SerpApi error: {e}")
-
-    return jsonify({"answer": answer, "image_url": image_url, "references": references})
+    return jsonify({"answer": answer, "image_url": None, "references": references})
 
 # ─── СТАТИСТИКА ───────────────────────────────────────────────────────────────
 
