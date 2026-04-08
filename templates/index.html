@@ -688,8 +688,8 @@ async function sendQuestion() {
   box.scrollTop = box.scrollHeight;
   try {
     const res = await fetch('/qa', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         question: q,
         grade: document.getElementById('qa-grade').value || null,
@@ -698,7 +698,11 @@ async function sendQuestion() {
     });
     const data = await res.json();
     const bubble = aiDiv.querySelector('.bubble-ai');
+
+    // Отговор
     bubble.textContent = data.answer || 'Няма отговор.';
+
+    // Изображение
     if(data.image_url) {
       const img = document.createElement('img');
       img.src = data.image_url;
@@ -706,6 +710,51 @@ async function sendQuestion() {
       img.onerror = () => img.remove();
       bubble.appendChild(img);
     }
+
+    // Референции
+    if(data.references && data.references.length > 0) {
+      const refDiv = document.createElement('div');
+      refDiv.style.cssText = 'margin-top:12px;border-top:1px solid #e5e5e5;padding-top:10px;';
+
+      const refTitle = document.createElement('div');
+      refTitle.style.cssText = 'font-size:11px;font-weight:600;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;';
+      refTitle.textContent = 'Източници';
+      refDiv.appendChild(refTitle);
+
+      data.references.forEach((ref, idx) => {
+        const refItem = document.createElement('div');
+        refItem.style.cssText = 'background:#f9f9f9;border:1px solid #e5e5e5;border-radius:6px;padding:8px 10px;margin-bottom:6px;cursor:pointer;';
+
+        const refHeader = document.createElement('div');
+        refHeader.style.cssText = 'font-size:11px;color:#2563eb;font-weight:500;margin-bottom:4px;';
+        const grade = ref.grade ? `${ref.grade} клас` : '';
+        const subject = ref.subject || '';
+        const section = ref.section || '';
+        refHeader.textContent = `[${idx+1}] ${[subject, grade, section].filter(Boolean).join(' · ')}`;
+
+        const refText = document.createElement('div');
+        refText.style.cssText = 'font-size:12px;color:#444;line-height:1.5;max-height:60px;overflow:hidden;transition:max-height 0.3s;';
+        refText.textContent = ref.text;
+
+        const refToggle = document.createElement('div');
+        refToggle.style.cssText = 'font-size:11px;color:#999;margin-top:3px;';
+        refToggle.textContent = 'Покажи повече ▾';
+        let expanded = false;
+        refItem.onclick = () => {
+          expanded = !expanded;
+          refText.style.maxHeight = expanded ? '400px' : '60px';
+          refToggle.textContent = expanded ? 'Скрий ▴' : 'Покажи повече ▾';
+        };
+
+        refItem.appendChild(refHeader);
+        refItem.appendChild(refText);
+        refItem.appendChild(refToggle);
+        refDiv.appendChild(refItem);
+      });
+
+      bubble.appendChild(refDiv);
+    }
+
   } catch(e) {
     aiDiv.querySelector('.bubble-ai').textContent = 'Грешка при свързване.';
   }
