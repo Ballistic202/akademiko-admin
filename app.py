@@ -33,9 +33,11 @@ def get_curriculum():
 
 # ─── DOWNLOAD CHUNK ───────────────────────────────────────────────────────────
 
-@app.route("/download-chunk/<filename>", methods=["GET"])
+@app.route("/download-chunk/<path:filename>", methods=["GET"])
 def download_chunk(filename):
     try:
+        from urllib.parse import unquote
+        filename = unquote(filename)
         blob = blob_client.get_blob_client("chunks-approved", filename)
         content = blob.download_blob().readall()
         return Response(
@@ -45,6 +47,7 @@ def download_chunk(filename):
             headers={"Content-Disposition": f"attachment; filename={filename}"}
         )
     except Exception as e:
+        app.logger.error(f"Download error: {e}")
         return jsonify({"error": str(e)}), 404
 
 # ─── PENDING / APPROVE / REJECT ───────────────────────────────────────────────
