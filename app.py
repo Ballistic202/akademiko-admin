@@ -412,7 +412,6 @@ def qa():
     app.logger.error(f"Search response: {str(search_response_json)[:300]}")
     results = search_response_json.get("value", [])
     app.logger.error(f"Search results count: {len(results)}")
-    app.logger.error(f"Result blob_url: {r.get('blob_url', '')}" )
 
     context = "\n\n".join([
         r.get("text_content") or r.get("snippet") or ""
