@@ -201,7 +201,6 @@ def chunk_ai():
 
 Върни САМО валиден JSON масив без никакъв друг текст."""
 
-    # Ограничи входния текст за да не препълваме context window
     text_limit = 12000
     text_truncated = text[:text_limit] if len(text) > text_limit else text
     if len(text) > text_limit:
@@ -298,7 +297,7 @@ def qa():
     search_body = {
         "search": question,
         "vectorQueries": [{"kind": "vector", "vector": vector, "fields": "snippet_vector", "k": 10}],
-        "select": "text_content,blob_url",
+        "select": "text_content,blob_url,section,subject,grade",
         "top": 5
     }
     search_res = req.post(search_url,
@@ -309,7 +308,11 @@ def qa():
     context = "\n\n".join([r.get("text_content") or r.get("snippet") or "" for r in results if r.get("text_content") or r.get("snippet")])
 
     if not context.strip():
-        return jsonify({"answer": "Нямам информация по този въпрос в наличните учебни материали.", "image_url": None})
+        return jsonify({
+            "answer": "Нямам информация по този въпрос в наличните учебни материали.",
+            "image_url": None,
+            "references": []
+        })
 
     chat_url = f"{openai_endpoint}openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
     chat_res = req.post(chat_url,
@@ -323,6 +326,19 @@ def qa():
         }
     )
     answer = chat_res.json()["choices"][0]["message"]["content"]
+
+    # Референции
+    references = []
+    for r in results:
+        text = r.get("text_content") or r.get("snippet") or ""
+        if text:
+            references.append({
+                "text": text,
+                "section": r.get("section", ""),
+                "subject": r.get("subject", ""),
+                "grade": r.get("grade", ""),
+                "blob_url": r.get("blob_url", "")
+            })
 
     image_url = None
     try:
@@ -354,7 +370,7 @@ def qa():
     except Exception as e:
         app.logger.error(f"SerpApi error: {e}")
 
-    return jsonify({"answer": answer, "image_url": image_url})
+    return jsonify({"answer": answer, "image_url": image_url, "references": references})
 
 # ─── СТАТИСТИКА ───────────────────────────────────────────────────────────────
 
