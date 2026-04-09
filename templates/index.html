@@ -268,7 +268,7 @@ textarea:focus{border-color:#2563eb}
           </div>
           <div>
             <label>Предмет</label>
-            <select id="qa-subject">
+            <select id="qa-subject" disabled>
               <option value="">Всички предмети</option>
             </select>
           </div>
@@ -379,12 +379,13 @@ function onSubjectChange() {
 function onQaGradeChange() {
   const grade = document.getElementById('qa-grade').value;
   const subjectSel = document.getElementById('qa-subject');
-
   subjectSel.innerHTML = '<option value="">Всички предмети</option>';
-
-  if (!grade || !curriculum[grade]) return;
-
+  if (!grade || !curriculum[grade]) {
+    subjectSel.disabled = true;
+    return;
+  }
   const subjects = Object.keys(curriculum[grade]).sort();
+  subjectSel.disabled = false;
   subjects.forEach(s => {
     const opt = document.createElement('option');
     opt.value = s;
