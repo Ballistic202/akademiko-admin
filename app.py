@@ -457,6 +457,14 @@ def qa():
     )
     answer = chat_res.json()["choices"][0]["message"]["content"]
 
+    # Ако GPT е отговорил с "нямам информация" — не показвай референции
+    if "Нямам информация" in answer:
+        return jsonify({
+            "answer": answer,
+            "image_url": None,
+            "references": []
+        })
+
     references = []
     for r in results:
         text = r.get("text_content") or r.get("snippet") or ""
