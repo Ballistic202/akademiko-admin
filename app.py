@@ -221,17 +221,18 @@ def save_ocr_text(filename):
 
 # ─── СТЪПКА 2: AI CHUNKING ────────────────────────────────────────────────────
 
-def get_program_text(grade, subject, section):
+def get_section_data(grade, subject, section):
+    """Връща goals и key_concepts_mon за раздела от curriculum"""
     try:
         grade_data = CURRICULUM.get(str(grade), {})
         subject_data = grade_data.get(subject, {})
         sections = subject_data.get("sections", [])
         for sec in sections:
             if sec.get("name") == section:
-                return sec.get("program_text", "")
+                return sec.get("goals", []), sec.get("key_concepts_mon", [])
     except Exception:
         pass
-    return ""
+    return [], []
 
 @app.route("/chunk-ai", methods=["POST"])
 def chunk_ai():
@@ -245,15 +246,21 @@ def chunk_ai():
     openai_endpoint = os.environ["OPENAI_ENDPOINT"]
     openai_key = os.environ["OPENAI_KEY"]
 
-    program_text = get_program_text(grade, subject, section)
+    goals, key_concepts_mon = get_section_data(grade, subject, section)
 
-    program_context = ""
-    if program_text:
-        program_context = f"""
-Учебна програма на МОН за този раздел (съдържа цели и ключови понятия):
----
-{program_text[:1500]}
----
+    # Изгради контекст от МОН програмата
+    mon_context = ""
+    if goals or key_concepts_mon:
+        goals_text = "\n".join(f"- {g}" for g in goals) if goals else "Няма"
+        concepts_text = ", ".join(key_concepts_mon) if key_concepts_mon else "Няма"
+        mon_context = f"""
+Учебна програма на МОН за раздел '{section}':
+
+Компетентности (цели):
+{goals_text}
+
+Ключови понятия:
+{concepts_text}
 """
 
     is_math = subject in MATH_SUBJECTS
@@ -268,18 +275,17 @@ def chunk_ai():
 - subject: предмет
 - grade: клас като число
 - section: раздел от учебната програма
-- content_type: тип съдържание — използвай "main_text" за теория с формули, "definition" за дефиниции, "theorem" за теореми и правила, "example" за примери с решения, "exercise" за задачи без теоретично обяснение
-- text_content: самият текст на chunk-а с LaTeX формулите (макс 800 символа)
+- content_type: "main_text" за теория с формули, "definition" за дефиниции, "theorem" за теореми и правила, "example" за примери с решения, "exercise" за задачи
+- text_content: текстът на chunk-а с LaTeX формулите (макс 800 символа)
 - key_concepts: масив с ключови математически понятия от chunk-а
-- goals: масив с цели от МОН програмата за този chunk
-- key_concepts_mon: масив с ключови понятия от МОН програмата за този chunk
+- goals: масив с цели от МОН програмата които покрива този chunk
+- key_concepts_mon: масив с ключови понятия от МОН програмата в този chunk
 
 Правила:
 - Семантично завършен и самостоятелен chunk
 - Минимум 50, максимум 800 символа
 - Не разделяй формули в средата
-- Дефиниции и теореми → отделни chunk-ове с content_type "definition" или "theorem"
-- Примери с решения → content_type "example"
+- Дефиниции и теореми → отделни chunk-ове
 - Чисти задачи без теория → content_type "exercise"
 - Запази LaTeX формулите точно както са
 
@@ -293,10 +299,10 @@ def chunk_ai():
 - grade: клас като число
 - section: раздел от учебната програма
 - content_type: тип съдържание (main_text, glossary, questions, exercise, table, example)
-- text_content: самият текст на chunk-а (макс 800 символа)
+- text_content: текстът на chunk-а (макс 800 символа)
 - key_concepts: масив с ключови понятия от текста
-- goals: масив с цели от МОН програмата за този chunk
-- key_concepts_mon: масив с ключови понятия от МОН програмата за този chunk
+- goals: масив с цели от МОН програмата които покрива този chunk
+- key_concepts_mon: масив с ключови понятия от МОН програмата в този chunk
 
 Правила:
 - Семантично завършен и самостоятелен chunk
@@ -315,13 +321,13 @@ def chunk_ai():
     user_prompt = f"""Предмет: {subject}
 Клас: {grade}
 Раздел: {section}
-{program_context}
+{mon_context}
 Текст за chunk-ване:
 {text_truncated}"""
 
     chat_url = f"{openai_endpoint}openai/deployments/gpt-4.1/chat/completions?api-version=2024-02-01"
 
-    app.logger.error(f"CHUNK-AI request: grade={grade}, subject={subject}, section={section}, text_len={len(text)}, prompt_len={len(user_prompt)}")
+    app.logger.error(f"CHUNK-AI request: grade={grade}, subject={subject}, section={section}, text_len={len(text)}, goals={len(goals)}, concepts={len(key_concepts_mon)}")
 
     try:
         chat_res = req.post(chat_url,
@@ -399,7 +405,6 @@ def qa():
     )
     vector = embed_res.json()["data"][0]["embedding"]
 
-    # Изгради филтър по клас и предмет
     filters = []
     if grade:
         try:
@@ -457,7 +462,6 @@ def qa():
     )
     answer = chat_res.json()["choices"][0]["message"]["content"]
 
-    # Ако GPT е отговорил с "нямам информация" — не показвай референции
     if "Нямам информация" in answer:
         return jsonify({
             "answer": answer,
