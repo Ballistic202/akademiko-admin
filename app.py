@@ -313,7 +313,7 @@ def chunk_ai():
 
 Върни САМО валиден JSON масив без никакъв друг текст."""
 
-    text_limit = 12000
+    text_limit = 200000
     text_truncated = text[:text_limit] if len(text) > text_limit else text
     if len(text) > text_limit:
         app.logger.warning(f"Text truncated from {len(text)} to {text_limit} chars")
