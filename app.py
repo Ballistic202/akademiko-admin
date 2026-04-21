@@ -233,6 +233,31 @@ def get_section_data(grade, subject, section):
         pass
     return [], []
 
+def split_text_by_paragraphs(text, limit=15000):
+    """Разбива текст на части по параграфи без да разрязва изречения"""
+    if len(text) <= limit:
+        return [text]
+
+    paragraphs = text.split('\n')
+    parts = []
+    current_part = []
+    current_len = 0
+
+    for para in paragraphs:
+        para_len = len(para) + 1  # +1 за новия ред
+        if current_len + para_len > limit and current_part:
+            parts.append('\n'.join(current_part))
+            current_part = [para]
+            current_len = para_len
+        else:
+            current_part.append(para)
+            current_len += para_len
+
+    if current_part:
+        parts.append('\n'.join(current_part))
+
+    return parts
+
 def call_gpt_chunk(chat_url, openai_key, system_prompt, user_prompt):
     """Извиква GPT и връща chunk-ове с partial parse fallback"""
     chat_res = req.post(chat_url,
@@ -362,14 +387,9 @@ def chunk_ai():
 
 Върни САМО валиден JSON масив без никакъв друг текст."""
 
-    text_limit = 15000
-    if len(text) > text_limit:
-        parts = []
-        for i in range(0, len(text), text_limit):
-            parts.append(text[i:i+text_limit])
+    parts = split_text_by_paragraphs(text, limit=15000)
+    if len(parts) > 1:
         app.logger.error(f"Text split into {len(parts)} parts (total {len(text)} chars)")
-    else:
-        parts = [text]
 
     chat_url = f"{openai_endpoint}openai/deployments/gpt-4.1/chat/completions?api-version=2024-02-01"
     app.logger.error(f"CHUNK-AI: grade={grade}, subject={subject}, section={section}, text_len={len(text)}, parts={len(parts)}, goals={len(goals)}")
@@ -502,7 +522,7 @@ def qa():
         headers={"api-key": openai_key, "Content-Type": "application/json"},
         json={
             "messages": [
-                {"role": "system", "content": "Отговаряй на български на база предоставеното учебно съдържание. Ако контекстът съдържа информация свързана с въпроса - дори частично или косвено - използвай я за отговор. Обясни с прости думи подходящи за ученици. Само ако контекстът наистина не съдържа никаква релевантна информация, отговори с: 'Нямам информация по този въпрос в наличните учебни материали.'"},
+                {"role": "system", "content": "Отговаряй на български на база предоставеното учебно съдържание. Ако контекстът съдържа информация свързано с въпроса - дори частично или косвено - използвай я за отговор. Обясни с прости думи подходящи за ученици. Само ако контекстът наистина не съдържа никаква релевантна информация, отговори с: 'Нямам информация по този въпрос в наличните учебни материали.'"},
                 {"role": "user", "content": f"Контекст:\n{context}\n\nВъпрос: {question}"}
             ],
             "max_tokens": 500
