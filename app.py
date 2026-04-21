@@ -222,7 +222,6 @@ def save_ocr_text(filename):
 # ─── СТЪПКА 2: AI CHUNKING ────────────────────────────────────────────────────
 
 def get_section_data(grade, subject, section):
-    """Връща goals и key_concepts_mon за раздела от curriculum"""
     try:
         grade_data = CURRICULUM.get(str(grade), {})
         subject_data = grade_data.get(subject, {})
@@ -233,6 +232,52 @@ def get_section_data(grade, subject, section):
     except Exception:
         pass
     return [], []
+
+def call_gpt_chunk(chat_url, openai_key, system_prompt, user_prompt):
+    """Извиква GPT и връща chunk-ове с partial parse fallback"""
+    chat_res = req.post(chat_url,
+        headers={"api-key": openai_key, "Content-Type": "application/json"},
+        json={
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            "max_tokens": 32000,
+            "temperature": 0.1
+        },
+        timeout=180
+    )
+
+    app.logger.error(f"GPT status: {chat_res.status_code}")
+
+    try:
+        response_json = chat_res.json()
+        finish_reason = response_json["choices"][0]["finish_reason"]
+        app.logger.error(f"GPT finish_reason: {finish_reason}")
+        raw = response_json["choices"][0]["message"]["content"].strip()
+        raw = raw.replace("```json", "").replace("```", "").strip()
+    except Exception as e:
+        app.logger.error(f"GPT response parse error: {e} | raw: {chat_res.text[:300]}")
+        return []
+
+    # Опит за пълен parse
+    try:
+        return json.loads(raw)
+    except Exception as e:
+        app.logger.error(f"Full JSON parse failed: {e} | raw length: {len(raw)}")
+
+    # Fallback: partial parse — намери последния валиден chunk
+    try:
+        last_brace = raw.rfind('},')
+        if last_brace > 0:
+            partial = raw[:last_brace+1] + ']'
+            chunks = json.loads(partial)
+            app.logger.error(f"Partial parse recovered {len(chunks)} chunks")
+            return chunks
+    except Exception as e2:
+        app.logger.error(f"Partial parse also failed: {e2}")
+
+    return []
 
 @app.route("/chunk-ai", methods=["POST"])
 def chunk_ai():
@@ -248,7 +293,6 @@ def chunk_ai():
 
     goals, key_concepts_mon = get_section_data(grade, subject, section)
 
-    # Изгради контекст от МОН програмата
     mon_context = ""
     if goals or key_concepts_mon:
         goals_text = "\n".join(f"- {g}" for g in goals) if goals else "Няма"
@@ -313,56 +357,57 @@ def chunk_ai():
 
 Върни САМО валиден JSON масив без никакъв друг текст."""
 
-    text_limit = 200000
-    text_truncated = text[:text_limit] if len(text) > text_limit else text
+    # Разбий на части ако текстът е голям
+    text_limit = 15000
     if len(text) > text_limit:
-        app.logger.warning(f"Text truncated from {len(text)} to {text_limit} chars")
+        parts = []
+        for i in range(0, len(text), text_limit):
+            parts.append(text[i:i+text_limit])
+        app.logger.error(f"Text split into {len(parts)} parts (total {len(text)} chars)")
+    else:
+        parts = [text]
 
-    user_prompt = f"""Предмет: {subject}
+    chat_url = f"{openai_endpoint}openai/deployments/gpt-4.1/chat/completions?api-version=2024-02-01"
+    app.logger.error(f"CHUNK-AI: grade={grade}, subject={subject}, section={section}, text_len={len(text)}, parts={len(parts)}, goals={len(goals)}")
+
+    all_chunks = []
+    for part_idx, part in enumerate(parts):
+        user_prompt = f"""Предмет: {subject}
 Клас: {grade}
 Раздел: {section}
 {mon_context}
-Текст за chunk-ване:
-{text_truncated}"""
+Текст за chunk-ване{f' (част {part_idx+1} от {len(parts)})' if len(parts) > 1 else ''}:
+{part}"""
 
-    chat_url = f"{openai_endpoint}openai/deployments/gpt-4.1/chat/completions?api-version=2024-02-01"
+        chunks_part = call_gpt_chunk(chat_url, openai_key, system_prompt, user_prompt)
+        app.logger.error(f"Part {part_idx+1}: {len(chunks_part)} chunks")
 
-    app.logger.error(f"CHUNK-AI request: grade={grade}, subject={subject}, section={section}, text_len={len(text)}, goals={len(goals)}, concepts={len(key_concepts_mon)}")
+        # Преномерирай chunk_id за да няма дубликати между частите
+        if part_idx > 0:
+            offset = len(all_chunks)
+            for c in chunks_part:
+                if "chunk_id" in c:
+                    try:
+                        parts_id = c["chunk_id"].rsplit("-", 1)
+                        if len(parts_id) == 2 and parts_id[1].isdigit():
+                            c["chunk_id"] = f"{parts_id[0]}-{int(parts_id[1]) + offset:03d}"
+                    except Exception:
+                        pass
 
-    try:
-        chat_res = req.post(chat_url,
-            headers={"api-key": openai_key, "Content-Type": "application/json"},
-            json={
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                "max_tokens": 32000,
-                "temperature": 0.1
-            },
-            timeout=120
-        )
-        app.logger.error(f"GPT status: {chat_res.status_code}")
-        app.logger.error(f"GPT raw: {chat_res.text[:500]}")
-    except Exception as e:
-        app.logger.error(f"GPT request failed: {e}")
-        return jsonify({"status": "error", "message": str(e), "chunks": [], "filename": ""}), 500
+        all_chunks.extend(chunks_part)
 
-    try:
-        raw = chat_res.json()["choices"][0]["message"]["content"].strip()
-        raw = raw.replace("```json", "").replace("```", "").strip()
-        chunks = json.loads(raw)
-    except Exception as e:
-        app.logger.error(f"Parse error: {e} | raw: {chat_res.text[:300]}")
-        chunks = []
+        if len(parts) > 1:
+            time.sleep(1)
+
+    app.logger.error(f"Total chunks: {len(all_chunks)}")
 
     output_name = f"{session_id}_chunks.json"
     dest = blob_client.get_blob_client("chunks-pending", output_name)
-    dest.upload_blob(json.dumps(chunks, ensure_ascii=False, indent=2), overwrite=True)
+    dest.upload_blob(json.dumps(all_chunks, ensure_ascii=False, indent=2), overwrite=True)
 
     return jsonify({
         "status": "ok",
-        "chunks": chunks,
+        "chunks": all_chunks,
         "filename": output_name
     })
 
