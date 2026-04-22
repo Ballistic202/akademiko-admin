@@ -233,74 +233,113 @@ def get_section_data(grade, subject, section):
         pass
     return [], []
 
-def split_text_by_paragraphs(text, limit=15000):
-    """Разбива текст на части по параграфи без да разрязва изречения"""
-    if len(text) <= limit:
-        return [text]
+def mechanical_chunk(text, subject, grade, section):
+    """Разбива текста механично на параграфи по \n\n"""
+    chunks = []
+    paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
 
-    paragraphs = text.split('\n')
-    parts = []
-    current_part = []
-    current_len = 0
-
+    final_paragraphs = []
     for para in paragraphs:
-        para_len = len(para) + 1  # +1 за новия ред
-        if current_len + para_len > limit and current_part:
-            parts.append('\n'.join(current_part))
-            current_part = [para]
-            current_len = para_len
+        if len(para) > 600:
+            sub_paras = [p.strip() for p in para.split('\n') if p.strip()]
+            current = []
+            current_len = 0
+            for sp in sub_paras:
+                if current_len + len(sp) > 600 and current:
+                    final_paragraphs.append('\n'.join(current))
+                    current = [sp]
+                    current_len = len(sp)
+                else:
+                    current.append(sp)
+                    current_len += len(sp) + 1
+            if current:
+                final_paragraphs.append('\n'.join(current))
         else:
-            current_part.append(para)
-            current_len += para_len
+            final_paragraphs.append(para)
 
-    if current_part:
-        parts.append('\n'.join(current_part))
+    final_paragraphs = [p for p in final_paragraphs if len(p) >= 30]
 
-    return parts
+    prefix = f"{subject[:3].lower()}-{grade}"
+    for idx, para in enumerate(final_paragraphs):
+        chunks.append({
+            "chunk_id": f"{prefix}-{idx+1:03d}",
+            "subject": subject,
+            "grade": int(grade) if grade else 0,
+            "section": section,
+            "content_type": "main_text",
+            "text_content": para,
+            "key_concepts": [],
+            "goals": [],
+            "key_concepts_mon": []
+        })
 
-def call_gpt_chunk(chat_url, openai_key, system_prompt, user_prompt):
-    """Извиква GPT и връща chunk-ове с partial parse fallback"""
-    chat_res = req.post(chat_url,
-        headers={"api-key": openai_key, "Content-Type": "application/json"},
-        json={
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            "max_tokens": 32000,
-            "temperature": 0.1
-        },
-        timeout=180
-    )
+    return chunks
 
-    app.logger.error(f"GPT status: {chat_res.status_code}")
+def tag_chunks_with_gpt(chunks, goals, key_concepts_mon, openai_endpoint, openai_key, subject, section):
+    """Един GPT call за тагване на goals и key_concepts_mon"""
+    if not goals and not key_concepts_mon:
+        return chunks
+    if not chunks:
+        return chunks
+
+    chat_url = f"{openai_endpoint}openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
+
+    chunks_list = "\n".join([
+        f"[{i}] {c['text_content'][:150]}"
+        for i, c in enumerate(chunks)
+    ])
+
+    goals_list = "\n".join(f"- {g}" for g in goals)
+    concepts_list = ", ".join(key_concepts_mon)
+
+    prompt = f"""Имаш {len(chunks)} текстови chunk-а от учебник по {subject}, раздел '{section}'.
+
+Цели от МОН програмата:
+{goals_list}
+
+Ключови понятия от МОН програмата:
+{concepts_list}
+
+Chunk-ове:
+{chunks_list}
+
+За всеки chunk определи кои цели и ключови понятия покрива.
+Върни САМО валиден JSON масив без никакъв друг текст:
+[{{"idx": 0, "goals": ["цел1"], "key_concepts_mon": ["понятие1"]}}, ...]
+
+Правила:
+- idx е индексът на chunk-а (0, 1, 2...)
+- goals са точните текстове на целите от списъка горе
+- key_concepts_mon са точните понятия от списъка горе
+- Ако chunk-ът не покрива нито една цел — върни празен масив за goals
+- Ако chunk-ът не съдържа нито едно понятие — върни празен масив за key_concepts_mon"""
 
     try:
-        response_json = chat_res.json()
-        finish_reason = response_json["choices"][0]["finish_reason"]
-        app.logger.error(f"GPT finish_reason: {finish_reason}")
-        raw = response_json["choices"][0]["message"]["content"].strip()
+        res = req.post(chat_url,
+            headers={"api-key": openai_key, "Content-Type": "application/json"},
+            json={
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": 4000,
+                "temperature": 0
+            },
+            timeout=60
+        )
+        raw = res.json()["choices"][0]["message"]["content"].strip()
         raw = raw.replace("```json", "").replace("```", "").strip()
+        tags = json.loads(raw)
+
+        for tag in tags:
+            idx = tag.get("idx")
+            if idx is not None and 0 <= idx < len(chunks):
+                chunks[idx]["goals"] = tag.get("goals", [])
+                chunks[idx]["key_concepts_mon"] = tag.get("key_concepts_mon", [])
+
     except Exception as e:
-        app.logger.error(f"GPT response parse error: {e} | raw: {chat_res.text[:300]}")
-        return []
+        app.logger.error(f"Tag GPT error: {e}")
 
-    try:
-        return json.loads(raw)
-    except Exception as e:
-        app.logger.error(f"Full JSON parse failed: {e} | raw length: {len(raw)}")
-
-    try:
-        last_brace = raw.rfind('},')
-        if last_brace > 0:
-            partial = raw[:last_brace+1] + ']'
-            chunks = json.loads(partial)
-            app.logger.error(f"Partial parse recovered {len(chunks)} chunks")
-            return chunks
-    except Exception as e2:
-        app.logger.error(f"Partial parse also failed: {e2}")
-
-    return []
+    return chunks
 
 @app.route("/chunk-ai", methods=["POST"])
 def chunk_ai():
@@ -316,121 +355,25 @@ def chunk_ai():
 
     goals, key_concepts_mon = get_section_data(grade, subject, section)
 
-    mon_context = ""
-    if goals or key_concepts_mon:
-        goals_text = "\n".join(f"- {g}" for g in goals) if goals else "Няма"
-        concepts_text = ", ".join(key_concepts_mon) if key_concepts_mon else "Няма"
-        mon_context = f"""
-Учебна програма на МОН за раздел '{section}':
+    # Стъпка 1: механично разбиване
+    chunks = mechanical_chunk(text, subject, grade, section)
+    app.logger.error(f"CHUNK-AI: mechanical split → {len(chunks)} chunks, text_len={len(text)}")
 
-Компетентности (цели):
-{goals_text}
-
-Ключови понятия:
-{concepts_text}
-"""
-
-    is_math = subject in MATH_SUBJECTS
-
-    if is_math:
-        system_prompt = """Ти си експерт по образователно съдържание. Анализирай предоставения математически учебен текст и го раздели на смислени chunk-ове подходящи за RAG система.
-
-Текстът съдържа LaTeX формули вградени като $формула$ (inline) и $$формула$$ (display). Запази ги непроменени в text_content.
-
-ВАЖНО: Запази ЦЕЛИЯ текст от оригинала без изключение. Не съкращавай, не обобщавай и не изпускай нито едно изречение или ред. Всяка дума от оригиналния текст трябва да присъства в някой chunk.
-
-За всеки chunk създай JSON обект със следните полета:
-- chunk_id: уникален идентификатор (напр. "mat-5-001")
-- subject: предмет
-- grade: клас като число
-- section: раздел от учебната програма
-- content_type: "main_text" за теория с формули, "definition" за дефиниции, "theorem" за теореми и правила, "example" за примери с решения, "exercise" за задачи
-- text_content: ТОЧНИЯТ текст от оригинала (макс 600 символа) — без съкращения
-- key_concepts: масив с ключови математически понятия от chunk-а
-- goals: масив с цели от МОН програмата които покрива този chunk
-- key_concepts_mon: масив с ключови понятия от МОН програмата в този chunk
-
-Правила:
-- Семантично завършен и самостоятелен chunk
-- Минимум 30, максимум 600 символа
-- Не разделяй формули в средата
-- Дефиниции и теореми → отделни chunk-ове
-- Чисти задачи без теория → content_type "exercise"
-- Запази LaTeX формулите точно както са
-- По-добре повече на брой по-малки chunk-ове отколкото по-малко по-големи
-
-Върни САМО валиден JSON масив без никакъв друг текст."""
-    else:
-        system_prompt = """Ти си експерт по образователно съдържание. Анализирай предоставения учебен текст и го раздели на смислени chunk-ове подходящи за RAG система.
-
-ВАЖНО: Запази ЦЕЛИЯ текст от оригинала без изключение. Не съкращавай, не обобщавай и не изпускай нито едно изречение или ред. Всяка дума от оригиналния текст трябва да присъства в някой chunk. Таблиците и списъците се запазват изцяло — ако са дълги, раздели ги на няколко chunk-а но не изпускай редове.
-
-За всеки chunk създай JSON обект със следните полета:
-- chunk_id: уникален идентификатор (напр. "предмет-клас-номер")
-- subject: предмет
-- grade: клас като число
-- section: раздел от учебната програма
-- content_type: тип съдържание (main_text, glossary, questions, exercise, table, example)
-- text_content: ТОЧНИЯТ текст от оригинала (макс 600 символа) — без съкращения
-- key_concepts: масив с ключови понятия от текста
-- goals: масив с цели от МОН програмата които покрива този chunk
-- key_concepts_mon: масив с ключови понятия от МОН програмата в този chunk
-
-Правила:
-- Семантично завършен и самостоятелен chunk
-- Минимум 30, максимум 600 символа
-- Не разделяй изречения в средата
-- Речникови дефиниции → отделен chunk
-- Въпроси и задачи → отделен chunk
-- Таблици → запази всички редове, раздели на части ако е нужно
-- По-добре повече на брой по-малки chunk-ове отколкото по-малко по-големи
-
-Върни САМО валиден JSON масив без никакъв друг текст."""
-
-    parts = split_text_by_paragraphs(text, limit=15000)
-    if len(parts) > 1:
-        app.logger.error(f"Text split into {len(parts)} parts (total {len(text)} chars)")
-
-    chat_url = f"{openai_endpoint}openai/deployments/gpt-4.1/chat/completions?api-version=2024-02-01"
-    app.logger.error(f"CHUNK-AI: grade={grade}, subject={subject}, section={section}, text_len={len(text)}, parts={len(parts)}, goals={len(goals)}")
-
-    all_chunks = []
-    for part_idx, part in enumerate(parts):
-        user_prompt = f"""Предмет: {subject}
-Клас: {grade}
-Раздел: {section}
-{mon_context}
-Текст за chunk-ване{f' (част {part_idx+1} от {len(parts)})' if len(parts) > 1 else ''}:
-{part}"""
-
-        chunks_part = call_gpt_chunk(chat_url, openai_key, system_prompt, user_prompt)
-        app.logger.error(f"Part {part_idx+1}: {len(chunks_part)} chunks")
-
-        if part_idx > 0:
-            offset = len(all_chunks)
-            for c in chunks_part:
-                if "chunk_id" in c:
-                    try:
-                        parts_id = c["chunk_id"].rsplit("-", 1)
-                        if len(parts_id) == 2 and parts_id[1].isdigit():
-                            c["chunk_id"] = f"{parts_id[0]}-{int(parts_id[1]) + offset:03d}"
-                    except Exception:
-                        pass
-
-        all_chunks.extend(chunks_part)
-
-        if len(parts) > 1:
-            time.sleep(1)
-
-    app.logger.error(f"Total chunks: {len(all_chunks)}")
+    # Стъпка 2: GPT тагване само на goals и key_concepts_mon
+    chunks = tag_chunks_with_gpt(
+        chunks, goals, key_concepts_mon,
+        openai_endpoint, openai_key,
+        subject, section
+    )
+    app.logger.error(f"CHUNK-AI: after tagging → {len(chunks)} chunks")
 
     output_name = f"{session_id}_chunks.json"
     dest = blob_client.get_blob_client("chunks-pending", output_name)
-    dest.upload_blob(json.dumps(all_chunks, ensure_ascii=False, indent=2), overwrite=True)
+    dest.upload_blob(json.dumps(chunks, ensure_ascii=False, indent=2), overwrite=True)
 
     return jsonify({
         "status": "ok",
-        "chunks": all_chunks,
+        "chunks": chunks,
         "filename": output_name
     })
 
@@ -522,7 +465,7 @@ def qa():
         headers={"api-key": openai_key, "Content-Type": "application/json"},
         json={
             "messages": [
-                {"role": "system", "content": "Отговаряй на български на база предоставеното учебно съдържание. Ако контекстът съдържа информация свързано с въпроса - дори частично или косвено - използвай я за отговор. Обясни с прости думи подходящи за ученици. Само ако контекстът наистина не съдържа никаква релевантна информация, отговори с: 'Нямам информация по този въпрос в наличните учебни материали.'"},
+                {"role": "system", "content": "Отговаряй на български на база предоставеното учебно съдържание. Ако контекстът съдържа информация свързана с въпроса - дори частично или косвено - използвай я за отговор. Обясни с прости думи подходящи за ученици. Само ако контекстът наистина не съдържа никаква релевантна информация, отговори с: 'Нямам информация по този въпрос в наличните учебни материали.'"},
                 {"role": "user", "content": f"Контекст:\n{context}\n\nВъпрос: {question}"}
             ],
             "max_tokens": 500
