@@ -103,9 +103,7 @@ def ocr_with_mathpix(file_bytes, filename):
         json={
             "src": f"data:{mime_type};base64,{image_b64}",
             "formats": ["text"],
-            "data_options": {
-                "include_latex": True
-            },
+            "data_options": {"include_latex": True},
             "options": {
                 "math_inline_delimiters": ["$", "$"],
                 "math_display_delimiters": ["$$", "$$"],
@@ -219,7 +217,7 @@ def save_ocr_text(filename):
     blob.upload_blob(text.encode("utf-8"), overwrite=True)
     return jsonify({"status": "ok", "filename": filename})
 
-# ─── СТЪПКА 2: AI CHUNKING ────────────────────────────────────────────────────
+# ─── СТЪПКА 2: CHUNKING ───────────────────────────────────────────────────────
 
 def get_section_data(grade, subject, section):
     try:
@@ -234,33 +232,13 @@ def get_section_data(grade, subject, section):
     return [], []
 
 def mechanical_chunk(text, subject, grade, section):
-    """Разбива текста механично на параграфи по \n\n"""
-    chunks = []
+    """Разбива текста механично само по двоен нов ред"""
     paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
-
-    final_paragraphs = []
-    for para in paragraphs:
-        if len(para) > 600:
-            sub_paras = [p.strip() for p in para.split('\n') if p.strip()]
-            current = []
-            current_len = 0
-            for sp in sub_paras:
-                if current_len + len(sp) > 600 and current:
-                    final_paragraphs.append('\n'.join(current))
-                    current = [sp]
-                    current_len = len(sp)
-                else:
-                    current.append(sp)
-                    current_len += len(sp) + 1
-            if current:
-                final_paragraphs.append('\n'.join(current))
-        else:
-            final_paragraphs.append(para)
-
-    final_paragraphs = [p for p in final_paragraphs if len(p) >= 30]
+    paragraphs = [p for p in paragraphs if len(p) >= 30]
 
     prefix = f"{subject[:3].lower()}-{grade}"
-    for idx, para in enumerate(final_paragraphs):
+    chunks = []
+    for idx, para in enumerate(paragraphs):
         chunks.append({
             "chunk_id": f"{prefix}-{idx+1:03d}",
             "subject": subject,
@@ -275,74 +253,9 @@ def mechanical_chunk(text, subject, grade, section):
 
     return chunks
 
-def tag_chunks_with_gpt(chunks, goals, key_concepts_mon, openai_endpoint, openai_key, subject, section):
-    """Един GPT call за тагване на goals и key_concepts_mon"""
-    if not goals and not key_concepts_mon:
-        return chunks
-    if not chunks:
-        return chunks
-
-    chat_url = f"{openai_endpoint}openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
-
-    chunks_list = "\n".join([
-        f"[{i}] {c['text_content'][:150]}"
-        for i, c in enumerate(chunks)
-    ])
-
-    goals_list = "\n".join(f"- {g}" for g in goals)
-    concepts_list = ", ".join(key_concepts_mon)
-
-    prompt = f"""Имаш {len(chunks)} текстови chunk-а от учебник по {subject}, раздел '{section}'.
-
-Цели от МОН програмата:
-{goals_list}
-
-Ключови понятия от МОН програмата:
-{concepts_list}
-
-Chunk-ове:
-{chunks_list}
-
-За всеки chunk определи кои цели и ключови понятия покрива.
-Върни САМО валиден JSON масив без никакъв друг текст:
-[{{"idx": 0, "goals": ["цел1"], "key_concepts_mon": ["понятие1"]}}, ...]
-
-Правила:
-- idx е индексът на chunk-а (0, 1, 2...)
-- goals са точните текстове на целите от списъка горе
-- key_concepts_mon са точните понятия от списъка горе
-- Ако chunk-ът не покрива нито една цел — върни празен масив за goals
-- Ако chunk-ът не съдържа нито едно понятие — върни празен масив за key_concepts_mon"""
-
-    try:
-        res = req.post(chat_url,
-            headers={"api-key": openai_key, "Content-Type": "application/json"},
-            json={
-                "messages": [
-                    {"role": "user", "content": prompt}
-                ],
-                "max_tokens": 4000,
-                "temperature": 0
-            },
-            timeout=60
-        )
-        raw = res.json()["choices"][0]["message"]["content"].strip()
-        raw = raw.replace("```json", "").replace("```", "").strip()
-        tags = json.loads(raw)
-
-        for tag in tags:
-            idx = tag.get("idx")
-            if idx is not None and 0 <= idx < len(chunks):
-                chunks[idx]["goals"] = tag.get("goals", [])
-                chunks[idx]["key_concepts_mon"] = tag.get("key_concepts_mon", [])
-
-    except Exception as e:
-        app.logger.error(f"Tag GPT error: {e}")
-
-    return chunks
-
 @app.route("/chunk-ai", methods=["POST"])
 def chunk_ai():
+    """Само механично разбиване — тагването става chunk по chunk от frontend"""
     data = request.json
     text = data.get("text", "")
     subject = data.get("subject", "")
@@ -350,22 +263,8 @@ def chunk_ai():
     section = data.get("section", "")
     session_id = data.get("session_id", "")
 
-    openai_endpoint = os.environ["OPENAI_ENDPOINT"]
-    openai_key = os.environ["OPENAI_KEY"]
-
-    goals, key_concepts_mon = get_section_data(grade, subject, section)
-
-    # Стъпка 1: механично разбиване
     chunks = mechanical_chunk(text, subject, grade, section)
     app.logger.error(f"CHUNK-AI: mechanical split → {len(chunks)} chunks, text_len={len(text)}")
-
-    # Стъпка 2: GPT тагване само на goals и key_concepts_mon
-    chunks = tag_chunks_with_gpt(
-        chunks, goals, key_concepts_mon,
-        openai_endpoint, openai_key,
-        subject, section
-    )
-    app.logger.error(f"CHUNK-AI: after tagging → {len(chunks)} chunks")
 
     output_name = f"{session_id}_chunks.json"
     dest = blob_client.get_blob_client("chunks-pending", output_name)
@@ -377,6 +276,80 @@ def chunk_ai():
         "filename": output_name
     })
 
+@app.route("/tag-chunk", methods=["POST"])
+def tag_chunk():
+    """Тагва един chunk — определя goals и key_concepts_mon"""
+    data = request.json
+    text = data.get("text", "")
+    grade = data.get("grade", "")
+    subject = data.get("subject", "")
+    section = data.get("section", "")
+
+    openai_endpoint = os.environ["OPENAI_ENDPOINT"]
+    openai_key = os.environ["OPENAI_KEY"]
+
+    goals, key_concepts_mon = get_section_data(grade, subject, section)
+
+    if not goals and not key_concepts_mon:
+        return jsonify({"goals": [], "key_concepts_mon": []})
+
+    chat_url = f"{openai_endpoint}openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
+
+    goals_list = "\n".join(f"- {g}" for g in goals)
+    concepts_list = ", ".join(key_concepts_mon)
+
+    prompt = f"""Имаш следния текст от учебник по {subject}, раздел '{section}':
+
+"{text}"
+
+Цели от МОН програмата:
+{goals_list}
+
+Ключови понятия от МОН програмата:
+{concepts_list}
+
+Определи кои цели и ключови понятия покрива този текст.
+Върни САМО валиден JSON без никакъв друг текст:
+{{"goals": ["цел1", "цел2"], "key_concepts_mon": ["понятие1"]}}
+
+Правила:
+- goals са точните текстове от списъка горе
+- key_concepts_mon са точните понятия от списъка горе
+- Ако текстът не покрива нито една цел — върни празен масив
+- Ако текстът не съдържа нито едно понятие — върни празен масив"""
+
+    try:
+        res = req.post(chat_url,
+            headers={"api-key": openai_key, "Content-Type": "application/json"},
+            json={
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 500,
+                "temperature": 0
+            },
+            timeout=30
+        )
+        raw = res.json()["choices"][0]["message"]["content"].strip()
+        raw = raw.replace("```json", "").replace("```", "").strip()
+        result = json.loads(raw)
+        return jsonify({
+            "goals": result.get("goals", []),
+            "key_concepts_mon": result.get("key_concepts_mon", [])
+        })
+    except Exception as e:
+        app.logger.error(f"Tag chunk error: {e}")
+        return jsonify({"goals": [], "key_concepts_mon": []})
+
+@app.route("/save-pending", methods=["POST"])
+def save_pending():
+    """Обновява pending файл с тагнатите chunk-ове"""
+    data = request.json
+    filename = data.get("filename", "")
+    chunks = data.get("chunks", [])
+
+    dest = blob_client.get_blob_client("chunks-pending", filename)
+    dest.upload_blob(json.dumps(chunks, ensure_ascii=False, indent=2), overwrite=True)
+
+    return jsonify({"status": "ok", "filename": filename, "count": len(chunks)})
 
 @app.route("/save-chunks", methods=["POST"])
 def save_chunks():
