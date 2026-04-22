@@ -78,11 +78,15 @@ textarea:focus{border-color:#2563eb}
 .ocr-text-container{position:relative}
 .ocr-actions{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center}
 .char-count{font-size:12px;color:#999;margin-left:auto}
-.paste-zone{border:2px dashed #d5d5d5;border-radius:8px;padding:1rem;text-align:center;cursor:pointer;font-size:13px;color:#666;margin-bottom:8px}
-.paste-zone:hover{background:#f0f7ff;border-color:#2563eb}
 .chunk-preview{border:1px solid #e5e5e5;border-radius:6px;padding:10px;margin-bottom:6px;background:#f9f9f9;font-size:12px}
 .chunk-preview-id{font-family:monospace;color:#666;margin-bottom:4px}
 .chunk-preview-text{color:#333;line-height:1.5}
+.mode-toggle{display:flex;gap:0;margin-bottom:1rem;border:1px solid #d5d5d5;border-radius:6px;overflow:hidden}
+.mode-btn{flex:1;padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:#fff;color:#666;transition:background .2s}
+.mode-btn.active{background:#2563eb;color:#fff}
+.mode-btn:first-child{border-right:1px solid #d5d5d5}
+.progress-bar-wrap{background:#e5e5e5;border-radius:4px;height:8px;margin-bottom:6px;overflow:hidden}
+.progress-bar-fill{height:100%;background:#2563eb;border-radius:4px;transition:width 0.3s}
 </style>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
@@ -111,9 +115,9 @@ textarea:focus{border-color:#2563eb}
       <div class="page-title">Качване на учебни материали</div>
 
       <div class="step-indicator">
-        <div class="step active" id="step1"><span class="step-num">1</span>OCR и проверка</div>
+        <div class="step active" id="step1"><span class="step-num">1</span>Текст и проверка</div>
         <div class="step-arrow">›</div>
-        <div class="step" id="step2"><span class="step-num">2</span>AI chunk-ване</div>
+        <div class="step" id="step2"><span class="step-num">2</span>Chunk-ване</div>
         <div class="step-arrow">›</div>
         <div class="step" id="step3"><span class="step-num">3</span>Запазване</div>
       </div>
@@ -157,16 +161,37 @@ textarea:focus{border-color:#2563eb}
         </div>
 
         <div class="card">
-          <div class="section-title">Файлове</div>
-          <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-            <div class="upload-title">Плъзнете PNG файлове тук или кликнете за избор</div>
-            <div class="upload-sub">Един или повече файла от един урок/тема → ще се обединят в един текст</div>
-            <input type="file" id="file-input" multiple accept=".png,.jpg,.jpeg" style="display:none" onchange="filesSelected(this.files)">
+          <div class="section-title">Начин на въвеждане</div>
+          <div class="mode-toggle">
+            <button class="mode-btn active" id="mode-ocr" onclick="setMode('ocr')">OCR от снимки</button>
+            <button class="mode-btn" id="mode-text" onclick="setMode('text')">Качи готов текст</button>
           </div>
-          <div class="file-list" id="file-list"></div>
-          <div id="upload-alert"></div>
-          <div class="btn-row">
-            <button class="btn btn-primary" id="btn-ocr" onclick="startOCR()">Стартирай OCR</button>
+
+          <!-- OCR режим -->
+          <div id="ocr-mode-zone">
+            <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+              <div class="upload-title">Плъзнете PNG файлове тук или кликнете за избор</div>
+              <div class="upload-sub">Един или повече файла от един урок/тема → ще се обединят в един текст</div>
+              <input type="file" id="file-input" multiple accept=".png,.jpg,.jpeg" style="display:none" onchange="filesSelected(this.files)">
+            </div>
+            <div class="file-list" id="file-list"></div>
+            <div id="upload-alert"></div>
+            <div class="btn-row">
+              <button class="btn btn-primary" id="btn-ocr" onclick="startOCR()">Стартирай OCR</button>
+            </div>
+          </div>
+
+          <!-- Директен текст режим -->
+          <div id="text-mode-zone" style="display:none">
+            <div class="upload-zone" onclick="document.getElementById('txt-input').click()">
+              <div class="upload-title">Кликнете за избор на .txt файл</div>
+              <div class="upload-sub">Готов редактиран текст с \n\n като граници между chunk-ове</div>
+              <input type="file" id="txt-input" accept=".txt" style="display:none" onchange="loadTxtFile(this)">
+            </div>
+            <div id="txt-alert"></div>
+            <div class="btn-row">
+              <button class="btn btn-primary" id="btn-txt" onclick="submitDirectText()" disabled>Продължи →</button>
+            </div>
           </div>
         </div>
       </div>
@@ -174,7 +199,7 @@ textarea:focus{border-color:#2563eb}
       <!-- Стъпка 1б: Преглед и редакция на OCR текст -->
       <div id="phase2" style="display:none">
         <div class="card">
-          <div class="section-title">OCR резултат — прегледайте и коригирайте текста</div>
+          <div class="section-title">Текст — прегледайте и коригирайте</div>
           <div class="ocr-actions">
             <button class="btn" onclick="downloadOCR()">Свали .txt</button>
             <label class="btn" style="cursor:pointer">
@@ -184,7 +209,7 @@ textarea:focus{border-color:#2563eb}
             <span class="char-count" id="char-count"></span>
           </div>
           <div class="ocr-text-container">
-            <textarea id="ocr-textarea" rows="20" placeholder="OCR текст..." oninput="updateCharCount()"></textarea>
+            <textarea id="ocr-textarea" rows="20" placeholder="Текст..." oninput="updateCharCount()"></textarea>
           </div>
           <div id="ocr-alert"></div>
           <div class="btn-row">
@@ -194,15 +219,19 @@ textarea:focus{border-color:#2563eb}
         </div>
       </div>
 
-      <!-- Стъпка 2: AI Chunking -->
+      <!-- Стъпка 2: Chunk-ване -->
       <div id="phase3" style="display:none">
         <div class="card">
-          <div class="section-title">AI разбиване на chunk-ове</div>
-          <p style="font-size:13px;color:#666;margin-bottom:1rem">Текстът е потвърден. Натиснете бутона за да изпратите текста към AI за анализ и разбиване на смислени части.</p>
+          <div class="section-title">Chunk-ване и тагване</div>
+          <p style="font-size:13px;color:#666;margin-bottom:1rem">Текстът ще се раздели механично по двоен нов ред. След това за всеки chunk ще се определят цели и ключови понятия от МОН програмата.</p>
+          <div id="chunking-progress" style="display:none;margin-bottom:1rem">
+            <div class="progress-bar-wrap"><div class="progress-bar-fill" id="chunk-progress-fill" style="width:0%"></div></div>
+            <div style="font-size:12px;color:#666" id="chunk-progress-text">Обработва се...</div>
+          </div>
           <div id="chunking-alert"></div>
           <div class="btn-row">
             <button class="btn" onclick="backToOCR()">← Редактирай текста</button>
-            <button class="btn btn-primary" id="btn-chunk" onclick="startChunking()">Разбий на chunk-ове с AI</button>
+            <button class="btn btn-primary" id="btn-chunk" onclick="startChunking()">Chunk-вай и тагвай</button>
           </div>
         </div>
       </div>
@@ -221,7 +250,7 @@ textarea:focus{border-color:#2563eb}
           <div id="json-alert"></div>
           <textarea class="json-editor" id="json-editor" rows="25"></textarea>
           <div class="btn-row">
-            <button class="btn" onclick="backToChunking()">← Разбий отново</button>
+            <button class="btn" onclick="backToChunking()">← Chunk-вай отново</button>
             <button class="btn btn-success" id="btn-save" onclick="saveChunks()">Запази и индексирай</button>
           </div>
         </div>
@@ -275,8 +304,6 @@ textarea:focus{border-color:#2563eb}
         </div>
 
         <div id="qa-split" style="display:flex;gap:16px;align-items:flex-start;">
-
-          <!-- Ляво: чат -->
           <div style="flex:1;min-width:0;">
             <div class="qa-box" id="qa-messages">
               <div style="text-align:center;color:#999;font-size:13px;padding:2rem">Задайте въпрос за да тествате системата</div>
@@ -286,13 +313,10 @@ textarea:focus{border-color:#2563eb}
               <button class="btn btn-primary" onclick="sendQuestion()">Изпрати</button>
             </div>
           </div>
-
-          <!-- Дясно: източници (скрит по подразбиране) -->
           <div id="qa-sources" style="display:none;width:320px;flex-shrink:0;">
             <div style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;padding:0 2px;">Източници</div>
             <div id="qa-sources-list"></div>
           </div>
-
         </div>
       </div>
     </div>
@@ -320,6 +344,7 @@ let sessionId = '';
 let ocrText = '';
 let currentChunkFile = '';
 let curriculum = {};
+let inputMode = 'ocr';
 
 async function loadCurriculum() {
   try {
@@ -330,25 +355,57 @@ async function loadCurriculum() {
   }
 }
 
+// ─── РЕЖИМ НА ВЪВЕЖДАНЕ ───────────────────────────────────────────────────────
+
+function setMode(mode) {
+  inputMode = mode;
+  document.getElementById('mode-ocr').classList.toggle('active', mode === 'ocr');
+  document.getElementById('mode-text').classList.toggle('active', mode === 'text');
+  document.getElementById('ocr-mode-zone').style.display = mode === 'ocr' ? 'block' : 'none';
+  document.getElementById('text-mode-zone').style.display = mode === 'text' ? 'block' : 'none';
+}
+
+function loadTxtFile(input) {
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    ocrText = e.target.result;
+    document.getElementById('txt-alert').innerHTML = `<div class="alert alert-success">Файлът е зареден: ${file.name} (${ocrText.length} символа)</div>`;
+    document.getElementById('btn-txt').disabled = false;
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function submitDirectText() {
+  if(!ocrText) { alert('Няма зареден текст.'); return; }
+  const grade = document.getElementById('grade').value;
+  const subject = document.getElementById('subject').value;
+  const section = document.getElementById('section').value;
+  if(!grade || !subject || !section) { alert('Моля изберете клас, предмет и раздел.'); return; }
+  sessionId = Date.now().toString();
+  document.getElementById('phase1').style.display = 'none';
+  document.getElementById('phase2').style.display = 'block';
+  document.getElementById('ocr-textarea').value = ocrText;
+  updateCharCount();
+  setStep(1);
+}
+
 // ─── ЙЕРАРХИЧНИ МЕНЮТА (OCR страница) ────────────────────────────────────────
 
 function onGradeChange() {
   const grade = document.getElementById('grade').value;
   const subjectSel = document.getElementById('subject');
   const sectionSel = document.getElementById('section');
-
   subjectSel.innerHTML = '<option value="">— изберете предмет —</option>';
   sectionSel.innerHTML = '<option value="">— първо изберете предмет —</option>';
   subjectSel.disabled = true;
   sectionSel.disabled = true;
-
   if (!grade || !curriculum[grade]) return;
-
   const subjects = Object.keys(curriculum[grade]).sort();
   subjects.forEach(s => {
     const opt = document.createElement('option');
-    opt.value = s;
-    opt.textContent = s;
+    opt.value = s; opt.textContent = s;
     subjectSel.appendChild(opt);
   });
   subjectSel.disabled = false;
@@ -358,17 +415,13 @@ function onSubjectChange() {
   const grade = document.getElementById('grade').value;
   const subject = document.getElementById('subject').value;
   const sectionSel = document.getElementById('section');
-
   sectionSel.innerHTML = '<option value="">— изберете раздел —</option>';
   sectionSel.disabled = true;
-
   if (!grade || !subject || !curriculum[grade] || !curriculum[grade][subject]) return;
-
   const sections = curriculum[grade][subject].sections || [];
   sections.forEach(s => {
     const opt = document.createElement('option');
-    opt.value = s.name;
-    opt.textContent = s.name;
+    opt.value = s.name; opt.textContent = s.name;
     sectionSel.appendChild(opt);
   });
   sectionSel.disabled = false;
@@ -380,18 +433,14 @@ function onQaGradeChange() {
   const grade = document.getElementById('qa-grade').value;
   const subjectSel = document.getElementById('qa-subject');
   subjectSel.innerHTML = '<option value="">Всички предмети</option>';
-  if (!grade || !curriculum[grade]) {
-    subjectSel.disabled = true;
-    return;
-  }
+  if (!grade || !curriculum[grade]) { subjectSel.disabled = true; return; }
   const subjects = Object.keys(curriculum[grade]).sort();
-  subjectSel.disabled = false;
   subjects.forEach(s => {
     const opt = document.createElement('option');
-    opt.value = s;
-    opt.textContent = s;
+    opt.value = s; opt.textContent = s;
     subjectSel.appendChild(opt);
   });
+  subjectSel.disabled = false;
 }
 
 // ─── НАВИГАЦИЯ ────────────────────────────────────────────────────────────────
@@ -434,15 +483,10 @@ dz.addEventListener('drop', e => { e.preventDefault(); dz.style.background=''; f
 
 async function startOCR() {
   if(!selectedFiles.length) { alert('Моля изберете файлове.'); return; }
-
   const grade = document.getElementById('grade').value;
   const subject = document.getElementById('subject').value;
   const section = document.getElementById('section').value;
-
-  if(!grade || !subject || !section) {
-    alert('Моля изберете клас, предмет и раздел.');
-    return;
-  }
+  if(!grade || !subject || !section) { alert('Моля изберете клас, предмет и раздел.'); return; }
 
   sessionId = Date.now().toString();
   const btn = document.getElementById('btn-ocr');
@@ -528,7 +572,10 @@ function backToChunking() {
 async function startChunking() {
   const btn = document.getElementById('btn-chunk');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> AI анализира...';
+  btn.innerHTML = '<span class="spinner"></span> Обработва се...';
+  document.getElementById('chunking-progress').style.display = 'block';
+  document.getElementById('chunk-progress-fill').style.width = '0%';
+  document.getElementById('chunk-progress-text').textContent = 'Разбива текста на chunk-ове...';
 
   try {
     const res = await fetch('/chunk-ai', {
@@ -543,21 +590,76 @@ async function startChunking() {
       })
     });
     const data = await res.json();
+
     if(data.status === 'ok') {
+      // Покажи прогрес на тагването
+      const total = data.chunks.length;
+      document.getElementById('chunk-progress-text').textContent = `Тагване: 0/${total} chunk-а...`;
+      document.getElementById('chunk-progress-fill').style.width = '10%';
+
+      // Тагване chunk по chunk
+      const taggedChunks = await tagChunksProgress(data.chunks, data.filename);
+
       currentChunkFile = data.filename;
-      document.getElementById('json-editor').value = JSON.stringify(data.chunks, null, 2);
-      document.getElementById('chunk-count').textContent = `${data.chunks.length} chunk-а`;
+      document.getElementById('json-editor').value = JSON.stringify(taggedChunks, null, 2);
+      document.getElementById('chunk-count').textContent = `${taggedChunks.length} chunk-а`;
+      document.getElementById('chunking-progress').style.display = 'none';
       document.getElementById('phase3').style.display = 'none';
       document.getElementById('phase4').style.display = 'block';
       setStep(3);
     } else {
       document.getElementById('chunking-alert').innerHTML = '<div class="alert alert-error">Грешка при chunk-ване.</div>';
+      document.getElementById('chunking-progress').style.display = 'none';
     }
   } catch(e) {
     document.getElementById('chunking-alert').innerHTML = '<div class="alert alert-error">Грешка при свързване.</div>';
+    document.getElementById('chunking-progress').style.display = 'none';
   }
   btn.disabled = false;
-  btn.innerHTML = 'Разбий на chunk-ове с AI';
+  btn.innerHTML = 'Chunk-вай и тагвай';
+}
+
+async function tagChunksProgress(chunks, filename) {
+  const total = chunks.length;
+  const tagged = [...chunks];
+
+  for(let i = 0; i < total; i++) {
+    const pct = Math.round(10 + (i / total) * 90);
+    document.getElementById('chunk-progress-fill').style.width = pct + '%';
+    document.getElementById('chunk-progress-text').textContent = `Тагване: ${i+1}/${total} chunk-а...`;
+
+    try {
+      const res = await fetch('/tag-chunk', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          text: chunks[i].text_content,
+          grade: chunks[i].grade,
+          subject: chunks[i].subject,
+          section: chunks[i].section
+        })
+      });
+      const data = await res.json();
+      tagged[i].goals = data.goals || [];
+      tagged[i].key_concepts_mon = data.key_concepts_mon || [];
+    } catch(e) {
+      // При грешка оставяме празни масиви
+    }
+  }
+
+  document.getElementById('chunk-progress-fill').style.width = '100%';
+  document.getElementById('chunk-progress-text').textContent = `Готово — ${total} chunk-а обработени`;
+
+  // Запази финалния JSON
+  try {
+    await fetch('/save-pending', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({filename: filename, chunks: tagged})
+    });
+  } catch(e) {}
+
+  return tagged;
 }
 
 function validateJSON() {
@@ -607,11 +709,15 @@ function resetUpload() {
   sessionId = '';
   ocrText = '';
   currentChunkFile = '';
+  inputMode = 'ocr';
   document.getElementById('file-list').innerHTML = '';
   document.getElementById('upload-alert').innerHTML = '';
+  document.getElementById('txt-alert').innerHTML = '';
   document.getElementById('ocr-textarea').value = '';
   document.getElementById('json-editor').value = '';
   document.getElementById('file-input').value = '';
+  document.getElementById('txt-input').value = '';
+  document.getElementById('btn-txt').disabled = true;
   document.getElementById('grade').value = '';
   document.getElementById('subject').innerHTML = '<option value="">— първо изберете клас —</option>';
   document.getElementById('subject').disabled = true;
@@ -621,6 +727,7 @@ function resetUpload() {
   document.getElementById('phase2').style.display = 'none';
   document.getElementById('phase3').style.display = 'none';
   document.getElementById('phase4').style.display = 'none';
+  setMode('ocr');
   setStep(1);
 }
 
@@ -749,14 +856,12 @@ async function sendQuestion() {
         const subject = ref.subject || '';
         const section = ref.section || '';
         const label = [subject, grade, section].filter(Boolean).join(' · ');
-
         const filename = ref.filename || '';
         const isChunkFile = filename.endsWith('_chunks.json');
         const downloadUrl = isChunkFile ? `/download-chunk/${encodeURIComponent(filename)}` : '';
 
         const item = document.createElement('div');
         item.style.cssText = 'background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:10px 12px;margin-bottom:8px;font-size:12px;';
-
         item.innerHTML = `
           <div style="font-size:11px;font-weight:600;color:#2563eb;margin-bottom:4px;">[${idx+1}] ${label}</div>
           <div class="ref-text" style="color:#444;line-height:1.5;max-height:60px;overflow:hidden;transition:max-height 0.3s;">${ref.text}</div>
@@ -765,14 +870,12 @@ async function sendQuestion() {
             ${downloadUrl ? `<a href="${downloadUrl}" style="font-size:11px;color:#2563eb;text-decoration:none;" title="Свали JSON файла">⬇ ${filename.substring(0,25)}${filename.length>25?'...':''}</a>` : ''}
           </div>
         `;
-
         let expanded = false;
         item.querySelector('.ref-toggle').onclick = () => {
           expanded = !expanded;
           item.querySelector('.ref-text').style.maxHeight = expanded ? '400px' : '60px';
           item.querySelector('.ref-toggle').textContent = expanded ? 'Скрий ▴' : 'Покажи повече ▾';
         };
-
         sourcesList.appendChild(item);
       });
 
