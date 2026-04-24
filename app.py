@@ -320,8 +320,8 @@ def tag_chunk():
 Правила:
 - goals са точните текстове от списъка горе
 - key_concepts_mon са точните понятия от списъка горе
-- Ако текстът не покрива нито една цел — върни празен масив
-- Ако текстът не съдържа нито едно понятие — върни празен масив"""
+- ЗАДЪЛЖИТЕЛНО избери поне една цел и поне едно понятие — дори ако връзката е слаба, избери най-релевантните
+- Ако текстът е много кратък или общ (заглавие, изречение) — избери най-близките по смисъл цел и понятие от списъка"""
 
     try:
         res = req.post(chat_url,
@@ -340,14 +340,25 @@ def tag_chunk():
         res.raise_for_status()
         result = res.json()["choices"][0]["message"]["content"]
         parsed = json.loads(result)
-        app.logger.error(f"TAG-CHUNK: GPT OK → goals={len(parsed.get('goals',[]))}, kcm={len(parsed.get('key_concepts_mon',[]))}")
+        final_goals = parsed.get("goals", [])
+        final_kcm = parsed.get("key_concepts_mon", [])
+
+        # Fallback: ако GPT не е избрал нищо — сложи всички от section-а
+        if not final_goals and goals:
+            final_goals = goals
+            app.logger.error(f"TAG-CHUNK: fallback goals → using all {len(goals)} from section")
+        if not final_kcm and key_concepts_mon:
+            final_kcm = key_concepts_mon
+            app.logger.error(f"TAG-CHUNK: fallback kcm → using all {len(key_concepts_mon)} from section")
+
+        app.logger.error(f"TAG-CHUNK: final → goals={len(final_goals)}, kcm={len(final_kcm)}")
         return jsonify({
-            "goals": parsed.get("goals", []),
-            "key_concepts_mon": parsed.get("key_concepts_mon", [])
+            "goals": final_goals,
+            "key_concepts_mon": final_kcm
         })
     except Exception as e:
-        app.logger.error(f"TAG-CHUNK ERROR: {e}")
-        return jsonify({"goals": [], "key_concepts_mon": []})
+        app.logger.error(f"TAG-CHUNK ERROR: {e} — fallback to all section data")
+        return jsonify({"goals": goals, "key_concepts_mon": key_concepts_mon})
 
 @app.route("/save-pending", methods=["POST"])
 def save_pending():
