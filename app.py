@@ -285,12 +285,17 @@ def tag_chunk():
     subject = data.get("subject", "")
     section = data.get("section", "")
 
+    app.logger.error(f"TAG-CHUNK: grade={grade}, subject={subject}, section={section}, text_len={len(text)}")
+
     openai_endpoint = os.environ["OPENAI_ENDPOINT"]
     openai_key = os.environ["OPENAI_KEY"]
 
     goals, key_concepts_mon = get_section_data(grade, subject, section)
 
+    app.logger.error(f"TAG-CHUNK: curriculum lookup → goals={len(goals)}, kcm={len(key_concepts_mon)}")
+
     if not goals and not key_concepts_mon:
+        app.logger.error(f"TAG-CHUNK: no curriculum data found, returning empty")
         return jsonify({"goals": [], "key_concepts_mon": []})
 
     chat_url = f"{openai_endpoint}openai/deployments/gpt-4o-mini/chat/completions?api-version=2024-02-01"
@@ -322,21 +327,26 @@ def tag_chunk():
         res = req.post(chat_url,
             headers={"api-key": openai_key, "Content-Type": "application/json"},
             json={
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": [
+                    {"role": "system", "content": "Ти връщаш САМО валиден JSON обект. Никакъв друг текст."},
+                    {"role": "user", "content": prompt}
+                ],
                 "max_tokens": 500,
-                "temperature": 0
+                "temperature": 0,
+                "response_format": {"type": "json_object"}
             },
             timeout=30
         )
-        raw = res.json()["choices"][0]["message"]["content"].strip()
-        raw = raw.replace("```json", "").replace("```", "").strip()
-        result = json.loads(raw)
+        res.raise_for_status()
+        result = res.json()["choices"][0]["message"]["content"]
+        parsed = json.loads(result)
+        app.logger.error(f"TAG-CHUNK: GPT OK → goals={len(parsed.get('goals',[]))}, kcm={len(parsed.get('key_concepts_mon',[]))}")
         return jsonify({
-            "goals": result.get("goals", []),
-            "key_concepts_mon": result.get("key_concepts_mon", [])
+            "goals": parsed.get("goals", []),
+            "key_concepts_mon": parsed.get("key_concepts_mon", [])
         })
     except Exception as e:
-        app.logger.error(f"Tag chunk error: {e}")
+        app.logger.error(f"TAG-CHUNK ERROR: {e}")
         return jsonify({"goals": [], "key_concepts_mon": []})
 
 @app.route("/save-pending", methods=["POST"])
